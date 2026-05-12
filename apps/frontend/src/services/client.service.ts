@@ -2,5 +2,36 @@ import { apiRequest } from "./apiClient";
 import type { Client } from "../types";
 
 export async function listClients() {
-  return apiRequest<Client[]>({ path: "/api/clients" });
+  const result = await apiRequest<{ ok: true; items: Client[] }>({ path: "/api/clients" });
+  return result.items;
+}
+
+export async function getClient(id: number) {
+  const result = await apiRequest<{ ok: true; item: Client }>({ path: `/api/clients/${id}` });
+  return result.item;
+}
+
+export async function createClient(input: Omit<Client, "id">) {
+  const result = await apiRequest<{ ok: true; item: Client }>({
+    path: "/api/clients",
+    method: "POST",
+    body: input
+  });
+  return result.item;
+}
+
+export async function updateClient(id: number, input: Omit<Client, "id">) {
+  const result = await apiRequest<{ ok: true; item: Client }>({
+    path: `/api/clients/${id}`,
+    method: "PUT",
+    body: input
+  });
+  return result.item;
+}
+
+export async function deleteClient(id: number) {
+  await apiRequest<void>({
+    path: `/api/clients/${id}`,
+    method: "DELETE"
+  });
 }

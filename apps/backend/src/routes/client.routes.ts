@@ -1,8 +1,16 @@
 import { Router } from "express";
-import { createClient, listClients } from "../controllers/client.controller.js";
+import {
+  createClientHandler,
+  deleteClientHandler,
+  getClientHandler,
+  listClientsHandler,
+  updateClientHandler
+} from "../controllers/client.controller.js";
 
 export const clientRouter = Router();
 
-clientRouter.get("/", listClients);
-clientRouter.post("/", createClient);
-
+clientRouter.get("/", listClientsHandler);
+clientRouter.get("/:id", getClientHandler);
+clientRouter.post("/", createClientHandler);
+clientRouter.put("/:id", updateClientHandler);
+clientRouter.delete("/:id", deleteClientHandler);

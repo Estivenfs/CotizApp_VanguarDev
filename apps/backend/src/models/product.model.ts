@@ -23,7 +23,7 @@ export async function getProductById(id: number) {
   return result.rows[0] ?? null;
 }
 
-export async function createProduct(input: Omit<ProductRow, \"id\">) {
+export async function createProduct(input: Omit<ProductRow, "id">) {
   const result = await pool.query<ProductRow>(
     `
       insert into productos (nombre, precio_ars, precio_usd, stock)
@@ -35,7 +35,7 @@ export async function createProduct(input: Omit<ProductRow, \"id\">) {
   return result.rows[0];
 }
 
-export async function updateProduct(id: number, input: Omit<ProductRow, \"id\">) {
+export async function updateProduct(id: number, input: Omit<ProductRow, "id">) {
   const result = await pool.query<ProductRow>(
     `
       update productos
