@@ -1,0 +1,92 @@
+.page {
+  display: grid;
+  gap: 16px;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.pageTitle {
+  margin: 0;
+}
+
+.pageSubtitle {
+  opacity: 0.8;
+  font-size: 13px;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.stack {
+  display: grid;
+  gap: 10px;
+}
+
+.formGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.formGrid--2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.formGrid--4 {
+  grid-template-columns: 1fr 160px 160px 120px;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.maxw-620 {
+  max-width: 620px;
+}
+
+.maxw-720 {
+  max-width: 720px;
+}
+
+.filterInput {
+  flex: 1;
+  max-width: 520px;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.sectionTitle {
+  font-weight: 600;
+}
+
+.cellMuted {
+  opacity: 0.9;
+}
+
+.cellEmpty {
+  padding: 12px 8px;
+  opacity: 0.8;
+}
+
+.table--min720 {
+  min-width: 720px;
+}
+
+.table--min820 {
+  min-width: 820px;
+}
+
+.table--min980 {
+  min-width: 980px;
+}

@@ -1,0 +1,125 @@
+.quotesTabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.quotesFilters {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+}
+
+.dateRange {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.colCheckbox {
+  width: 36px;
+}
+
+.statusPill {
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  display: inline-block;
+  min-width: 130px;
+  text-align: center;
+}
+
+.status--pend_reactivacion {
+  background: #e9e4c6;
+  color: #3a3619;
+}
+
+.status--enviada {
+  background: #e7d4ee;
+  color: #3a1e47;
+}
+
+.status--pospuesta {
+  background: #d8c4bb;
+  color: #3f2b23;
+}
+
+.status--borrador {
+  background: #cfcfcf;
+  color: #1f1f1f;
+}
+
+.status--cerrada_perdida {
+  background: #f0b4b4;
+  color: #3a1515;
+}
+
+.status--cerrada_ganada {
+  background: #bfe9c2;
+  color: #17331a;
+}
+
+.status--emitida {
+  background: #cde3ff;
+  color: #0e2440;
+}
+
+.quoteNewGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.productsHeaderGrid,
+.productsRowGrid {
+  display: grid;
+  grid-template-columns: 2fr 120px 140px 140px;
+  gap: 10px;
+}
+
+.summaryGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr minmax(280px, 420px);
+  align-items: start;
+}
+
+.summaryCard {
+  padding: 14px;
+}
+
+.summaryRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.summaryValue {
+  font-weight: 600;
+}
+
+.summaryTotalLabel {
+  font-weight: 700;
+}
+
+.summaryTotalValue {
+  font-weight: 800;
+}
+
+.newActions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-start;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.minw-170 {
+  min-width: 170px;
+}
+
+.minw-280 {
+  width: 280px;
+}

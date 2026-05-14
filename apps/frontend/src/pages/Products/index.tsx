@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "../../components/common/Button";
 import type { Product } from "../../types";
 import * as productService from "../../services/product.service";
 import { formatMoney } from "../../utils/currency";
@@ -145,167 +146,92 @@ export default function ProductsPage() {
   }
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+    <div className="page">
+      <div className="pageHeader">
         <div>
-          <h1 style={{ marginTop: 0, marginBottom: 6 }}>Productos</h1>
-          <div style={{ opacity: 0.8, fontSize: 13 }}>Catálogo bimonetario (ARS / USD) y stock</div>
+          <h1 className="pageTitle">Productos</h1>
+          <div className="pageSubtitle">Catálogo bimonetario (ARS / USD) y stock</div>
         </div>
-        <button
-          onClick={startCreate}
-          style={{
-            padding: "10px 12px",
-            borderRadius: 8,
-            border: "1px solid rgba(255,255,255,0.15)",
-            background: "rgba(255,255,255,0.06)",
-            color: "inherit",
-            cursor: "pointer"
-          }}
-        >
+        <Button onClick={startCreate}>
           Nuevo producto
-        </button>
+        </Button>
       </div>
 
-      <div style={{ display: "grid", gap: 10, maxWidth: 720 }}>
-        <div style={{ fontWeight: 600 }}>{editingId ? `Editar SKU #${editingId}` : "Nuevo"}</div>
-        <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr 160px 160px 120px" }}>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Descripción</span>
+      <div className="stack maxw-720">
+        <div className="sectionTitle">{editingId ? `Editar SKU #${editingId}` : "Nuevo"}</div>
+        <div className="formGrid formGrid--4">
+          <label className="field">
+            <span className="label">Descripción</span>
             <input
               value={draft.nombre}
               onChange={(e) => setDraft((d) => ({ ...d, nombre: e.target.value }))}
-              style={{
-                padding: 10,
-                borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.06)",
-                color: "inherit"
-              }}
+              className="input"
             />
           </label>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Precio ARS</span>
+          <label className="field">
+            <span className="label">Precio ARS</span>
             <input
               value={draft.precio_ars}
               onChange={(e) => setDraft((d) => ({ ...d, precio_ars: e.target.value }))}
               inputMode="decimal"
-              style={{
-                padding: 10,
-                borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.06)",
-                color: "inherit"
-              }}
+              className="input"
             />
           </label>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Precio USD</span>
+          <label className="field">
+            <span className="label">Precio USD</span>
             <input
               value={draft.precio_usd}
               onChange={(e) => setDraft((d) => ({ ...d, precio_usd: e.target.value }))}
               inputMode="decimal"
-              style={{
-                padding: 10,
-                borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.06)",
-                color: "inherit"
-              }}
+              className="input"
             />
           </label>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Stock</span>
+          <label className="field">
+            <span className="label">Stock</span>
             <input
               value={draft.stock}
               onChange={(e) => setDraft((d) => ({ ...d, stock: e.target.value }))}
               inputMode="numeric"
-              style={{
-                padding: 10,
-                borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.06)",
-                color: "inherit"
-              }}
+              className="input"
             />
           </label>
         </div>
 
-        <div style={{ display: "flex", gap: 10 }}>
-          <button
-            disabled={loading}
-            onClick={() => void onSave()}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.15)",
-              background: "rgba(255,255,255,0.12)",
-              color: "inherit",
-              cursor: "pointer"
-            }}
-          >
+        <div className="actions">
+          <Button disabled={loading} onClick={() => void onSave()} className="btn--primary">
             Guardar
-          </button>
-          <button
-            disabled={loading}
-            onClick={startCreate}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.15)",
-              background: "transparent",
-              color: "inherit",
-              cursor: "pointer"
-            }}
-          >
+          </Button>
+          <Button disabled={loading} onClick={startCreate} className="btn--ghost">
             Cancelar
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+      <div className="row">
         <input
           placeholder="Filtrar (SKU o descripción...)"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          style={{
-            flex: 1,
-            maxWidth: 520,
-            padding: 10,
-            borderRadius: 8,
-            border: "1px solid rgba(255,255,255,0.15)",
-            background: "rgba(255,255,255,0.06)",
-            color: "inherit"
-          }}
+          className="input filterInput"
         />
-        <button
-          disabled={loading}
-          onClick={() => void reload()}
-          style={{
-            padding: "10px 12px",
-            borderRadius: 8,
-            border: "1px solid rgba(255,255,255,0.15)",
-            background: "rgba(255,255,255,0.06)",
-            color: "inherit",
-            cursor: "pointer"
-          }}
-        >
+        <Button disabled={loading} onClick={() => void reload()}>
           Actualizar
-        </button>
+        </Button>
       </div>
 
-      {error ? <div style={{ color: "#ffb4b4" }}>{error}</div> : null}
-      {loading ? <div style={{ opacity: 0.75 }}>Cargando...</div> : null}
+      {error ? <div className="error">{error}</div> : null}
+      {loading ? <div className="hint">Cargando...</div> : null}
 
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 820 }}>
+      <div className="tableWrap">
+        <table className="table table--min820">
           <thead>
-            <tr style={{ textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
-              <th style={{ padding: "10px 8px" }}>SKU</th>
-              <th style={{ padding: "10px 8px" }}>Descripción</th>
-              <th style={{ padding: "10px 8px" }}>ARS</th>
-              <th style={{ padding: "10px 8px" }}>USD</th>
-              <th style={{ padding: "10px 8px" }}>Stock</th>
-              <th style={{ padding: "10px 8px" }}>Acciones</th>
+            <tr>
+              <th>SKU</th>
+              <th>Descripción</th>
+              <th>ARS</th>
+              <th>USD</th>
+              <th>Stock</th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -313,48 +239,26 @@ export default function ProductsPage() {
               const ars = parseMoney(p.precio_ars) ?? 0;
               const usd = parseMoney(p.precio_usd) ?? 0;
               return (
-                <tr key={p.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                  <td style={{ padding: "10px 8px", opacity: 0.9 }}>{p.id}</td>
-                  <td style={{ padding: "10px 8px" }}>{p.nombre}</td>
-                  <td style={{ padding: "10px 8px" }}>{formatMoney(ars, "ARS")}</td>
-                  <td style={{ padding: "10px 8px" }}>{formatMoney(usd, "USD")}</td>
-                  <td style={{ padding: "10px 8px" }}>{p.stock}</td>
-                  <td style={{ padding: "10px 8px", display: "flex", gap: 8 }}>
-                    <button
-                      disabled={loading}
-                      onClick={() => startEdit(p)}
-                      style={{
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        border: "1px solid rgba(255,255,255,0.15)",
-                        background: "rgba(255,255,255,0.06)",
-                        color: "inherit",
-                        cursor: "pointer"
-                      }}
-                    >
+                <tr key={p.id}>
+                  <td className="cellMuted">{p.id}</td>
+                  <td>{p.nombre}</td>
+                  <td>{formatMoney(ars, "ARS")}</td>
+                  <td>{formatMoney(usd, "USD")}</td>
+                  <td>{p.stock}</td>
+                  <td className="row">
+                    <Button disabled={loading} onClick={() => startEdit(p)} className="btn--sm">
                       Editar
-                    </button>
-                    <button
-                      disabled={loading}
-                      onClick={() => void onDelete(p.id)}
-                      style={{
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        border: "1px solid rgba(255,255,255,0.15)",
-                        background: "transparent",
-                        color: "inherit",
-                        cursor: "pointer"
-                      }}
-                    >
+                    </Button>
+                    <Button disabled={loading} onClick={() => void onDelete(p.id)} className="btn--sm btn--ghost">
                       Eliminar
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               );
             })}
             {!filtered.length ? (
               <tr>
-                <td style={{ padding: 12, opacity: 0.8 }} colSpan={6}>
+                <td className="cellEmpty" colSpan={6}>
                   Sin resultados
                 </td>
               </tr>

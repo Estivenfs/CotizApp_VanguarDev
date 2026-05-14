@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "../../components/common/Button";
 import type { Client } from "../../types";
 import * as clientService from "../../services/client.service";
 
@@ -120,209 +121,112 @@ export default function ClientsPage() {
   }
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+    <div className="page">
+      <div className="pageHeader">
         <div>
-          <h1 style={{ marginTop: 0, marginBottom: 6 }}>Clientes</h1>
-          <div style={{ opacity: 0.8, fontSize: 13 }}>Listado y ABM</div>
+          <h1 className="pageTitle">Clientes</h1>
+          <div className="pageSubtitle">Listado y ABM</div>
         </div>
-        <button
-          onClick={startCreate}
-          style={{
-            padding: "10px 12px",
-            borderRadius: 8,
-            border: "1px solid rgba(255,255,255,0.15)",
-            background: "rgba(255,255,255,0.06)",
-            color: "inherit",
-            cursor: "pointer"
-          }}
-        >
+        <Button onClick={startCreate}>
           Nuevo cliente
-        </button>
+        </Button>
       </div>
 
-      <div style={{ display: "grid", gap: 10, maxWidth: 620 }}>
-        <div style={{ fontWeight: 600 }}>{editingId ? `Editar #${editingId}` : "Nuevo"}</div>
-        <div style={{ display: "grid", gap: 10 }}>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Nombre empresa</span>
+      <div className="stack maxw-620">
+        <div className="nowrap sectionTitle">{editingId ? `Editar #${editingId}` : "Nuevo"}</div>
+        <div className="formGrid">
+          <label className="field">
+            <span className="label">Nombre empresa</span>
             <input
               value={draft.nombre_empresa}
               onChange={(e) => setDraft((d) => ({ ...d, nombre_empresa: e.target.value }))}
-              style={{
-                padding: 10,
-                borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.06)",
-                color: "inherit"
-              }}
+              className="input"
             />
           </label>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Contacto principal</span>
+          <label className="field">
+            <span className="label">Contacto principal</span>
             <input
               value={draft.contacto_principal ?? ""}
               onChange={(e) => setDraft((d) => ({ ...d, contacto_principal: e.target.value }))}
-              style={{
-                padding: 10,
-                borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.06)",
-                color: "inherit"
-              }}
+              className="input"
             />
           </label>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>CUIT / Tax ID</span>
+          <label className="field">
+            <span className="label">CUIT / Tax ID</span>
             <input
               value={draft.cuit_tax_id ?? ""}
               onChange={(e) => setDraft((d) => ({ ...d, cuit_tax_id: e.target.value }))}
-              style={{
-                padding: 10,
-                borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.06)",
-                color: "inherit"
-              }}
+              className="input"
             />
           </label>
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Clasificación</span>
+          <label className="field">
+            <span className="label">Clasificación</span>
             <input
               value={draft.clasificacion ?? ""}
               onChange={(e) => setDraft((d) => ({ ...d, clasificacion: e.target.value }))}
-              style={{
-                padding: 10,
-                borderRadius: 8,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.06)",
-                color: "inherit"
-              }}
+              className="input"
             />
           </label>
         </div>
 
-        <div style={{ display: "flex", gap: 10 }}>
-          <button
-            disabled={loading}
-            onClick={() => void onSave()}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.15)",
-              background: "rgba(255,255,255,0.12)",
-              color: "inherit",
-              cursor: "pointer"
-            }}
-          >
+        <div className="actions">
+          <Button disabled={loading} onClick={() => void onSave()} className="btn--primary">
             Guardar
-          </button>
-          <button
-            disabled={loading}
-            onClick={startCreate}
-            style={{
-              padding: "10px 12px",
-              borderRadius: 8,
-              border: "1px solid rgba(255,255,255,0.15)",
-              background: "transparent",
-              color: "inherit",
-              cursor: "pointer"
-            }}
-          >
+          </Button>
+          <Button disabled={loading} onClick={startCreate} className="btn--ghost">
             Cancelar
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+      <div className="row">
         <input
           placeholder="Filtrar (empresa, contacto, CUIT, clasificación...)"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          style={{
-            flex: 1,
-            maxWidth: 520,
-            padding: 10,
-            borderRadius: 8,
-            border: "1px solid rgba(255,255,255,0.15)",
-            background: "rgba(255,255,255,0.06)",
-            color: "inherit"
-          }}
+          className="input filterInput"
         />
-        <button
-          disabled={loading}
-          onClick={() => void reload()}
-          style={{
-            padding: "10px 12px",
-            borderRadius: 8,
-            border: "1px solid rgba(255,255,255,0.15)",
-            background: "rgba(255,255,255,0.06)",
-            color: "inherit",
-            cursor: "pointer"
-          }}
-        >
+        <Button disabled={loading} onClick={() => void reload()}>
           Actualizar
-        </button>
+        </Button>
       </div>
 
-      {error ? <div style={{ color: "#ffb4b4" }}>{error}</div> : null}
-      {loading ? <div style={{ opacity: 0.75 }}>Cargando...</div> : null}
+      {error ? <div className="error">{error}</div> : null}
+      {loading ? <div className="hint">Cargando...</div> : null}
 
-      <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+      <div className="tableWrap">
+        <table className="table table--min720">
           <thead>
-            <tr style={{ textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
-              <th style={{ padding: "10px 8px" }}>ID</th>
-              <th style={{ padding: "10px 8px" }}>Empresa</th>
-              <th style={{ padding: "10px 8px" }}>Contacto</th>
-              <th style={{ padding: "10px 8px" }}>CUIT</th>
-              <th style={{ padding: "10px 8px" }}>Clasificación</th>
-              <th style={{ padding: "10px 8px" }}>Acciones</th>
+            <tr>
+              <th>ID</th>
+              <th>Empresa</th>
+              <th>Contacto</th>
+              <th>CUIT</th>
+              <th>Clasificación</th>
+              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map((c) => (
-              <tr key={c.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                <td style={{ padding: "10px 8px", opacity: 0.9 }}>{c.id}</td>
-                <td style={{ padding: "10px 8px" }}>{c.nombre_empresa}</td>
-                <td style={{ padding: "10px 8px" }}>{c.contacto_principal ?? "-"}</td>
-                <td style={{ padding: "10px 8px" }}>{c.cuit_tax_id ?? "-"}</td>
-                <td style={{ padding: "10px 8px" }}>{c.clasificacion ?? "-"}</td>
-                <td style={{ padding: "10px 8px", display: "flex", gap: 8 }}>
-                  <button
-                    disabled={loading}
-                    onClick={() => startEdit(c)}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      border: "1px solid rgba(255,255,255,0.15)",
-                      background: "rgba(255,255,255,0.06)",
-                      color: "inherit",
-                      cursor: "pointer"
-                    }}
-                  >
+              <tr key={c.id}>
+                <td className="cellMuted">{c.id}</td>
+                <td>{c.nombre_empresa}</td>
+                <td>{c.contacto_principal ?? "-"}</td>
+                <td>{c.cuit_tax_id ?? "-"}</td>
+                <td>{c.clasificacion ?? "-"}</td>
+                <td className="row">
+                  <Button disabled={loading} onClick={() => startEdit(c)} className="btn--sm">
                     Editar
-                  </button>
-                  <button
-                    disabled={loading}
-                    onClick={() => void onDelete(c.id)}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      border: "1px solid rgba(255,255,255,0.15)",
-                      background: "transparent",
-                      color: "inherit",
-                      cursor: "pointer"
-                    }}
-                  >
+                  </Button>
+                  <Button disabled={loading} onClick={() => void onDelete(c.id)} className="btn--sm btn--ghost">
                     Eliminar
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}
             {!filtered.length ? (
               <tr>
-                <td style={{ padding: 12, opacity: 0.8 }} colSpan={6}>
+                <td className="cellEmpty" colSpan={6}>
                   Sin resultados
                 </td>
               </tr>

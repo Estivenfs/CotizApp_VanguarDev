@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "../../components/common/Button";
 import type { Client, CurrencyCode, Product } from "../../types";
 import * as clientService from "../../services/client.service";
 import * as productService from "../../services/product.service";
@@ -282,14 +283,15 @@ export default function QuotesPage() {
 
   function statusStyle(s: string) {
     const v = s.toUpperCase();
-    if (v === "PEND_REACTIVACION") return { bg: "#e9e4c6", fg: "#3a3619", label: "Pend. reactivación" };
-    if (v === "ENVIADA") return { bg: "#e7d4ee", fg: "#3a1e47", label: "Enviada" };
-    if (v === "POSPUESTA") return { bg: "#d8c4bb", fg: "#3f2b23", label: "Pospuesta" };
-    if (v === "BORRADOR") return { bg: "#cfcfcf", fg: "#1f1f1f", label: "Borrador" };
-    if (v === "CERRADA_PERDIDA") return { bg: "#f0b4b4", fg: "#3a1515", label: "Cerrada perdida" };
-    if (v === "CERRADA_GANADA") return { bg: "#bfe9c2", fg: "#17331a", label: "Cerrada ganada" };
-    if (v === "EMITIDA") return { bg: "#cde3ff", fg: "#0e2440", label: "Emitida" };
-    return { bg: "#cfcfcf", fg: "#1f1f1f", label: s };
+    const className = `statusPill status--${v.toLowerCase()}`;
+    if (v === "PEND_REACTIVACION") return { className, label: "Pend. reactivación" };
+    if (v === "ENVIADA") return { className, label: "Enviada" };
+    if (v === "POSPUESTA") return { className, label: "Pospuesta" };
+    if (v === "BORRADOR") return { className, label: "Borrador" };
+    if (v === "CERRADA_PERDIDA") return { className, label: "Cerrada perdida" };
+    if (v === "CERRADA_GANADA") return { className, label: "Cerrada ganada" };
+    if (v === "EMITIDA") return { className, label: "Emitida" };
+    return { className: "statusPill", label: s };
   }
 
   function formatDate(iso: string) {
@@ -429,49 +431,25 @@ export default function QuotesPage() {
   }
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div className="page">
       {mode === "list" ? (
-        <div style={{ display: "grid", gap: 14 }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+        <div className="stack">
+          <div className="pageHeader">
             <div>
-              <h1 style={{ marginTop: 0, marginBottom: 6 }}>Cotizaciones</h1>
-              <div style={{ opacity: 0.8, fontSize: 13 }}>
-                Creá presupuestos y hacé el seguimiento de tus ventas
-              </div>
+              <h1 className="pageTitle">Cotizaciones</h1>
+              <div className="pageSubtitle">Creá presupuestos y hacé el seguimiento de tus ventas</div>
             </div>
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                disabled={loading}
-                onClick={downloadCsv}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  background: "transparent",
-                  color: "inherit",
-                  cursor: "pointer"
-                }}
-              >
+            <div className="row">
+              <Button disabled={loading} onClick={downloadCsv} className="btn--ghost">
                 Exportar lista
-              </button>
-              <button
-                disabled={loading}
-                onClick={startNew}
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  background: "rgba(255,255,255,0.12)",
-                  color: "inherit",
-                  cursor: "pointer"
-                }}
-              >
+              </Button>
+              <Button disabled={loading} onClick={startNew} className="btn--primary">
                 + Nueva cotización
-              </button>
+              </Button>
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div className="quotesTabs">
             {[
               { key: "todos", label: "Todos" },
               { key: "ultimas", label: "Últimas generadas" },
@@ -479,142 +457,74 @@ export default function QuotesPage() {
             ].map((t) => {
               const active = tab === (t.key as any);
               return (
-                <button
+                <Button
                   key={t.key}
                   onClick={() => {
                     setTab(t.key as any);
                     void reloadQuotes();
                   }}
-                  style={{
-                    padding: "8px 14px",
-                    borderRadius: 999,
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    background: active ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)",
-                    color: "inherit",
-                    cursor: "pointer"
-                  }}
+                  className={["btn--pill", active ? "btn--primary" : ""].filter(Boolean).join(" ")}
                 >
                   {t.label}
-                </button>
+                </Button>
               );
             })}
           </div>
 
-          <div style={{ display: "grid", gap: 10, gridTemplateColumns: "1fr auto auto", alignItems: "center" }}>
-            <input
-              placeholder="Buscar..."
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              style={{
-                width: "100%",
-                boxSizing: "border-box",
-                padding: 10,
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.06)",
-                color: "inherit"
-              }}
-            />
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                style={{
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "inherit"
-                }}
-              />
-              <span style={{ opacity: 0.7 }}>—</span>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                style={{
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "inherit"
-                }}
-              />
+          <div className="quotesFilters">
+            <input placeholder="Buscar..." value={q} onChange={(e) => setQ(e.target.value)} className="input" />
+            <div className="dateRange">
+              <input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="input" />
+              <span className="hint">—</span>
+              <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="input" />
             </div>
-            <button
-              disabled={loading}
-              onClick={() => void reloadQuotes()}
-              style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.06)",
-                color: "inherit",
-                cursor: "pointer"
-              }}
-            >
+            <Button disabled={loading} onClick={() => void reloadQuotes()}>
               Filtrar
-            </button>
+            </Button>
           </div>
 
-          {error ? <div style={{ color: "#ffb4b4" }}>{error}</div> : null}
-          {info ? <div style={{ color: "#b6ffd7" }}>{info}</div> : null}
-          {loading ? <div style={{ opacity: 0.75 }}>Cargando...</div> : null}
+          {error ? <div className="error">{error}</div> : null}
+          {info ? <div className="success">{info}</div> : null}
+          {loading ? <div className="hint">Cargando...</div> : null}
 
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
+          <div className="tableWrap">
+            <table className="table table--min980">
               <thead>
-                <tr style={{ textAlign: "left", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
-                  <th style={{ padding: "10px 8px", width: 36 }}>
+                <tr>
+                  <th className="colCheckbox">
                     <input type="checkbox" />
                   </th>
-                  <th style={{ padding: "10px 8px" }}>Cliente</th>
-                  <th style={{ padding: "10px 8px" }}>ID</th>
-                  <th style={{ padding: "10px 8px" }}>Fecha</th>
-                  <th style={{ padding: "10px 8px" }}>Monto</th>
-                  <th style={{ padding: "10px 8px" }}>Tipo de cliente</th>
-                  <th style={{ padding: "10px 8px" }}>Estado</th>
-                  <th style={{ padding: "10px 8px" }}>Prox. alerta</th>
-                  <th style={{ padding: "10px 8px" }}>Acciones</th>
+                  <th>Cliente</th>
+                  <th>ID</th>
+                  <th>Fecha</th>
+                  <th>Monto</th>
+                  <th>Tipo de cliente</th>
+                  <th>Estado</th>
+                  <th>Prox. alerta</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {quotes.map((r) => {
                   const st = statusStyle(r.estado);
                   return (
-                    <tr key={r.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                      <td style={{ padding: "10px 8px" }}>
+                    <tr key={r.id}>
+                      <td className="colCheckbox">
                         <input type="checkbox" />
                       </td>
-                      <td style={{ padding: "10px 8px" }}>{r.cliente_nombre_empresa}</td>
-                      <td style={{ padding: "10px 8px", opacity: 0.9 }}>#{r.id}</td>
-                      <td style={{ padding: "10px 8px", opacity: 0.9 }}>{formatDate(r.fecha_emision)}</td>
-                      <td style={{ padding: "10px 8px", opacity: 0.9 }}>
+                      <td>{r.cliente_nombre_empresa}</td>
+                      <td className="cellMuted">#{r.id}</td>
+                      <td className="cellMuted">{formatDate(r.fecha_emision)}</td>
+                      <td className="cellMuted">
                         ${r.total_final} {r.moneda}
                       </td>
-                      <td style={{ padding: "10px 8px", opacity: 0.85 }}>
-                        {r.cliente_clasificacion ?? "-"}
+                      <td className="hint">{r.cliente_clasificacion ?? "-"}</td>
+                      <td>
+                        <span className={st.className}>{st.label}</span>
                       </td>
-                      <td style={{ padding: "10px 8px" }}>
-                        <span
-                          style={{
-                            padding: "6px 10px",
-                            borderRadius: 8,
-                            background: st.bg,
-                            color: st.fg,
-                            fontSize: 12,
-                            display: "inline-block",
-                            minWidth: 130,
-                            textAlign: "center"
-                          }}
-                        >
-                          {st.label}
-                        </span>
-                      </td>
-                      <td style={{ padding: "10px 8px", opacity: 0.9 }}>{formatAlert(r.proxima_alerta)}</td>
-                      <td style={{ padding: "10px 8px" }}>
-                        <button
+                      <td className="cellMuted">{formatAlert(r.proxima_alerta)}</td>
+                      <td>
+                        <Button
                           onClick={async () => {
                             try {
                               const pdf = await quoteService.downloadQuotePdf(r.id);
@@ -623,24 +533,18 @@ export default function QuotesPage() {
                               setError(err instanceof Error ? err.message : "download_error");
                             }
                           }}
-                          style={{
-                            padding: "8px 10px",
-                            borderRadius: 10,
-                            border: "1px solid rgba(255,255,255,0.15)",
-                            background: "transparent",
-                            color: "inherit",
-                            cursor: "pointer"
-                          }}
+                          className="btn--icon btn--ghost"
+                          title="Descargar PDF"
                         >
                           ⋮
-                        </button>
+                        </Button>
                       </td>
                     </tr>
                   );
                 })}
                 {quotes.length === 0 && !loading ? (
                   <tr>
-                    <td colSpan={9} style={{ padding: "16px 8px", opacity: 0.75 }}>
+                    <td className="cellEmpty" colSpan={9}>
                       No hay cotizaciones para mostrar
                     </td>
                   </tr>
@@ -650,50 +554,27 @@ export default function QuotesPage() {
           </div>
         </div>
       ) : (
-        <div style={{ display: "grid", gap: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+        <div className="stack">
+          <div className="pageHeader">
             <div>
-              <h1 style={{ marginTop: 0, marginBottom: 6 }}>Nueva cotización</h1>
-              <div style={{ opacity: 0.8, fontSize: 13 }}>Cotizaciones &gt; Nueva cotización</div>
+              <h1 className="pageTitle">Nueva cotización</h1>
+              <div className="pageSubtitle">Cotizaciones &gt; Nueva cotización</div>
             </div>
-            <button
-              onClick={backToList}
-              disabled={saving}
-              style={{
-                padding: "10px 12px",
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "transparent",
-                color: "inherit",
-                cursor: "pointer"
-              }}
-            >
+            <Button onClick={backToList} disabled={saving} className="btn--ghost">
               Volver
-            </button>
+            </Button>
           </div>
 
-          {error ? <div style={{ color: "#ffb4b4" }}>{error}</div> : null}
-          {info ? <div style={{ color: "#b6ffd7" }}>{info}</div> : null}
+          {error ? <div className="error">{error}</div> : null}
+          {info ? <div className="success">{info}</div> : null}
 
-          <div style={{ fontWeight: 700, opacity: 0.9 }}>Datos generales</div>
-          <div style={{ height: 1, background: "rgba(255,255,255,0.12)" }} />
+          <div className="sectionTitle">Datos generales</div>
+          <div className="divider" />
 
-          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
-            <label style={{ display: "grid", gap: 6, minWidth: 0 }}>
-              <span>Cliente</span>
-              <select
-                value={idCliente}
-                onChange={(e) => setIdCliente(e.target.value)}
-                style={{
-                  width: "100%",
-                  boxSizing: "border-box",
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "inherit"
-                }}
-              >
+          <div className="quoteNewGrid">
+            <label className="field">
+              <span className="label">Cliente</span>
+              <select value={idCliente} onChange={(e) => setIdCliente(e.target.value)} className="select">
                 <option value="">Seleccionar</option>
                 {clients.map((c) => (
                   <option key={c.id} value={String(c.id)}>
@@ -703,21 +584,9 @@ export default function QuotesPage() {
               </select>
             </label>
 
-            <label style={{ display: "grid", gap: 6, minWidth: 0 }}>
-              <span>Estado de cotización</span>
-              <select
-                value={estado}
-                onChange={(e) => setEstado(e.target.value)}
-                style={{
-                  width: "100%",
-                  boxSizing: "border-box",
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "inherit"
-                }}
-              >
+            <label className="field">
+              <span className="label">Estado de cotización</span>
+              <select value={estado} onChange={(e) => setEstado(e.target.value)} className="select">
                 <option value="BORRADOR">Borrador</option>
                 <option value="EMITIDA">Emitida</option>
                 <option value="ENVIADA">Enviada</option>
@@ -728,90 +597,42 @@ export default function QuotesPage() {
               </select>
             </label>
 
-            <label style={{ display: "grid", gap: 6, minWidth: 0 }}>
-              <span>Fecha de cotización</span>
-              <input
-                type="date"
-                value={fechaCotizacion}
-                onChange={(e) => setFechaCotizacion(e.target.value)}
-                style={{
-                  width: "100%",
-                  boxSizing: "border-box",
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "inherit"
-                }}
-              />
+            <label className="field">
+              <span className="label">Fecha de cotización</span>
+              <input type="date" value={fechaCotizacion} onChange={(e) => setFechaCotizacion(e.target.value)} className="input" />
             </label>
 
-            <label style={{ display: "grid", gap: 6, minWidth: 0 }}>
-              <span>Fecha de vencimiento</span>
-              <input
-                type="date"
-                value={fechaVencimiento}
-                onChange={(e) => setFechaVencimiento(e.target.value)}
-                style={{
-                  width: "100%",
-                  boxSizing: "border-box",
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "inherit"
-                }}
-              />
+            <label className="field">
+              <span className="label">Fecha de vencimiento</span>
+              <input type="date" value={fechaVencimiento} onChange={(e) => setFechaVencimiento(e.target.value)} className="input" />
             </label>
 
-            <label style={{ display: "grid", gap: 6, minWidth: 0 }}>
-              <span>Moneda</span>
-              <select
-                value={moneda}
-                onChange={(e) => setMoneda(e.target.value as CurrencyCode)}
-                style={{
-                  width: "100%",
-                  boxSizing: "border-box",
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "inherit"
-                }}
-              >
+            <label className="field">
+              <span className="label">Moneda</span>
+              <select value={moneda} onChange={(e) => setMoneda(e.target.value as CurrencyCode)} className="select">
                 <option value="ARS">ARS</option>
                 <option value="USD">USD</option>
               </select>
             </label>
           </div>
 
-          <div style={{ fontWeight: 700, opacity: 0.9, marginTop: 6 }}>Productos</div>
-          <div style={{ height: 1, background: "rgba(255,255,255,0.12)" }} />
+          <div className="sectionTitle">Productos</div>
+          <div className="divider" />
 
-          <div style={{ display: "grid", gap: 10 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 120px 140px 140px", gap: 10 }}>
-              <div style={{ opacity: 0.85 }}>Nombre del producto</div>
-              <div style={{ opacity: 0.85 }}>Cantidad</div>
-              <div style={{ opacity: 0.85 }}>Descuento</div>
-              <div style={{ opacity: 0.85 }}>Impuestos</div>
+          <div className="stack">
+            <div className="productsHeaderGrid hint">
+              <div>Nombre del producto</div>
+              <div>Cantidad</div>
+              <div>Descuento</div>
+              <div>Impuestos</div>
             </div>
 
             {items.map((it, idx) => (
-              <div key={idx} style={{ display: "grid", gridTemplateColumns: "2fr 120px 140px 140px", gap: 10 }}>
+              <div key={idx} className="productsRowGrid">
                 <select
                   value={it.id_producto}
-                  onChange={(e) =>
-                    setItems((prev) => prev.map((x, i) => (i === idx ? { ...x, id_producto: e.target.value } : x)))
-                  }
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: 10,
-                    borderRadius: 10,
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    background: "rgba(255,255,255,0.06)",
-                    color: "inherit"
-                  }}
+                  onChange={(e) => setItems((prev) => prev.map((x, i) => (i === idx ? { ...x, id_producto: e.target.value } : x)))}
+                  className="select"
                 >
                   <option value="">Seleccionar</option>
                   {products.map((p) => (
@@ -823,37 +644,15 @@ export default function QuotesPage() {
 
                 <input
                   value={it.cantidad}
-                  onChange={(e) =>
-                    setItems((prev) => prev.map((x, i) => (i === idx ? { ...x, cantidad: e.target.value } : x)))
-                  }
+                  onChange={(e) => setItems((prev) => prev.map((x, i) => (i === idx ? { ...x, cantidad: e.target.value } : x)))}
                   inputMode="numeric"
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: 10,
-                    borderRadius: 10,
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    background: "rgba(255,255,255,0.06)",
-                    color: "inherit"
-                  }}
+                  className="input"
                 />
 
                 <select
                   value={it.descuento_porcentaje}
-                  onChange={(e) =>
-                    setItems((prev) =>
-                      prev.map((x, i) => (i === idx ? { ...x, descuento_porcentaje: e.target.value } : x))
-                    )
-                  }
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: 10,
-                    borderRadius: 10,
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    background: "rgba(255,255,255,0.06)",
-                    color: "inherit"
-                  }}
+                  onChange={(e) => setItems((prev) => prev.map((x, i) => (i === idx ? { ...x, descuento_porcentaje: e.target.value } : x)))}
+                  className="select"
                 >
                   {["0", "5", "10", "15", "20", "25", "30"].map((v) => (
                     <option key={v} value={v}>
@@ -862,242 +661,96 @@ export default function QuotesPage() {
                   ))}
                 </select>
 
-                <select
-                  value="Auto"
-                  disabled
-                  style={{
-                    width: "100%",
-                    boxSizing: "border-box",
-                    padding: 10,
-                    borderRadius: 10,
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    background: "rgba(255,255,255,0.04)",
-                    color: "inherit",
-                    opacity: 0.8
-                  }}
-                >
+                <select value="Auto" disabled className="select">
                   <option>Auto</option>
                 </select>
               </div>
             ))}
 
-            <div style={{ display: "flex", gap: 10 }}>
-              <button
-                onClick={() =>
-                  setItems((prev) => [...prev, { id_producto: "", cantidad: "1", descuento_porcentaje: "0" }])
-                }
+            <div className="row">
+              <Button
+                onClick={() => setItems((prev) => [...prev, { id_producto: "", cantidad: "1", descuento_porcentaje: "0" }])}
                 disabled={saving}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  background: "transparent",
-                  color: "inherit",
-                  cursor: "pointer",
-                  width: 280
-                }}
+                className="btn--ghost minw-280"
               >
                 + Añadir otro producto
-              </button>
+              </Button>
               {items.length > 1 ? (
-                <button
-                  onClick={() => setItems((prev) => prev.slice(0, -1))}
-                  disabled={saving}
-                  style={{
-                    padding: "10px 12px",
-                    borderRadius: 10,
-                    border: "1px solid rgba(255,255,255,0.15)",
-                    background: "transparent",
-                    color: "inherit",
-                    cursor: "pointer"
-                  }}
-                >
+                <Button onClick={() => setItems((prev) => prev.slice(0, -1))} disabled={saving} className="btn--ghost">
                   Quitar último
-                </button>
+                </Button>
               ) : null}
             </div>
           </div>
 
-          <div style={{ fontWeight: 700, opacity: 0.9, marginTop: 6 }}>Resumen</div>
-          <div style={{ height: 1, background: "rgba(255,255,255,0.12)" }} />
+          <div className="sectionTitle">Resumen</div>
+          <div className="divider" />
 
-          <div
-            style={{
-              display: "grid",
-              gap: 12,
-              gridTemplateColumns: "1fr minmax(280px, 420px)",
-              alignItems: "start"
-            }}
-          >
+          <div className="summaryGrid">
             <div />
-            <div
-              style={{
-                padding: 14,
-                borderRadius: 16,
-                border: "1px solid rgba(255,255,255,0.12)",
-                background: "rgba(255,255,255,0.04)"
-              }}
-            >
-              <div style={{ display: "grid", gap: 8, fontSize: 14 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                  <span style={{ opacity: 0.85 }}>Subtotal (sin impuestos):</span>
-                  <span style={{ fontWeight: 600 }}>
-                    ${centsToMoneyString(preview.subtotalSinImpuestosCents)}
-                  </span>
+            <div className="card summaryCard">
+              <div className="stack">
+                <div className="summaryRow">
+                  <span className="hint">Subtotal (sin impuestos):</span>
+                  <span className="summaryValue">${centsToMoneyString(preview.subtotalSinImpuestosCents)}</span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                  <span style={{ opacity: 0.85 }}>Impuestos:</span>
-                  <span style={{ fontWeight: 600 }}>${centsToMoneyString(preview.impuestosCents)}</span>
+                <div className="summaryRow">
+                  <span className="hint">Impuestos:</span>
+                  <span className="summaryValue">${centsToMoneyString(preview.impuestosCents)}</span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                  <span style={{ opacity: 0.85 }}>Subtotal (con impuestos):</span>
-                  <span style={{ fontWeight: 600 }}>
-                    ${centsToMoneyString(preview.subtotalConImpuestosCents)}
-                  </span>
+                <div className="summaryRow">
+                  <span className="hint">Subtotal (con impuestos):</span>
+                  <span className="summaryValue">${centsToMoneyString(preview.subtotalConImpuestosCents)}</span>
                 </div>
-                <div style={{ height: 1, background: "rgba(255,255,255,0.12)", margin: "6px 0" }} />
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                  <span style={{ fontWeight: 700 }}>Total:</span>
-                  <span style={{ fontWeight: 800 }}>
-                    ${centsToMoneyString(preview.subtotalConImpuestosCents)}
-                  </span>
+                <div className="divider" />
+                <div className="summaryRow">
+                  <span className="summaryTotalLabel">Total:</span>
+                  <span className="summaryTotalValue">${centsToMoneyString(preview.subtotalConImpuestosCents)}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div style={{ fontWeight: 700, opacity: 0.9, marginTop: 6 }}>Información adicional</div>
-          <div style={{ height: 1, background: "rgba(255,255,255,0.12)" }} />
+          <div className="sectionTitle">Información adicional</div>
+          <div className="divider" />
 
-          <label style={{ display: "grid", gap: 6 }}>
-            <span>Notas</span>
-            <textarea
-              value={notas}
-              onChange={(e) => setNotas(e.target.value)}
-              style={{
-                minHeight: 96,
-                padding: 10,
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.06)",
-                color: "inherit",
-                resize: "vertical"
-              }}
-            />
+          <label className="field">
+            <span className="label">Notas</span>
+            <textarea value={notas} onChange={(e) => setNotas(e.target.value)} className="textarea" />
           </label>
 
-          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
-            <label style={{ display: "grid", gap: 6 }}>
-              <span>Plazo de entrega</span>
-              <input
-                value={plazoEntrega}
-                onChange={(e) => setPlazoEntrega(e.target.value)}
-                placeholder="Seleccionar"
-                style={{
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "inherit"
-                }}
-              />
+          <div className="quoteNewGrid">
+            <label className="field">
+              <span className="label">Plazo de entrega</span>
+              <input value={plazoEntrega} onChange={(e) => setPlazoEntrega(e.target.value)} placeholder="Seleccionar" className="input" />
             </label>
-            <label style={{ display: "grid", gap: 6 }}>
-              <span>Forma de pago</span>
-              <input
-                value={formaPago}
-                onChange={(e) => setFormaPago(e.target.value)}
-                placeholder="Seleccionar"
-                style={{
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "inherit"
-                }}
-              />
+            <label className="field">
+              <span className="label">Forma de pago</span>
+              <input value={formaPago} onChange={(e) => setFormaPago(e.target.value)} placeholder="Seleccionar" className="input" />
             </label>
-            <label style={{ display: "grid", gap: 6 }}>
-              <span>Lugar de entrega</span>
-              <input
-                value={lugarEntrega}
-                onChange={(e) => setLugarEntrega(e.target.value)}
-                placeholder="Seleccionar"
-                style={{
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "inherit"
-                }}
-              />
+            <label className="field">
+              <span className="label">Lugar de entrega</span>
+              <input value={lugarEntrega} onChange={(e) => setLugarEntrega(e.target.value)} placeholder="Seleccionar" className="input" />
             </label>
-            <label style={{ display: "grid", gap: 6 }}>
-              <span>Mantenimiento de oferta</span>
-              <input
-                value={mantenimientoOferta}
-                onChange={(e) => setMantenimientoOferta(e.target.value)}
-                placeholder="Seleccionar"
-                style={{
-                  padding: 10,
-                  borderRadius: 10,
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  background: "rgba(255,255,255,0.06)",
-                  color: "inherit"
-                }}
-              />
+            <label className="field">
+              <span className="label">Mantenimiento de oferta</span>
+              <input value={mantenimientoOferta} onChange={(e) => setMantenimientoOferta(e.target.value)} placeholder="Seleccionar" className="input" />
             </label>
           </div>
 
-          <div style={{ display: "flex", gap: 10, justifyContent: "flex-start", marginTop: 8 }}>
-            <button
-              disabled={saving}
-              onClick={() => void saveDraft()}
-              style={{
-                padding: "10px 14px",
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "transparent",
-                color: "inherit",
-                cursor: "pointer",
-                minWidth: 170
-              }}
-            >
+          <div className="newActions">
+            <Button disabled={saving} onClick={() => void saveDraft()} className="btn--ghost minw-170">
               Guardar borrador
-            </button>
-            <button
-              disabled={saving}
-              onClick={() => void generateQuote()}
-              style={{
-                padding: "10px 14px",
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,255,255,0.12)",
-                color: "inherit",
-                cursor: "pointer",
-                minWidth: 170
-              }}
-            >
+            </Button>
+            <Button disabled={saving} onClick={() => void generateQuote()} className="btn--primary minw-170">
               Generar
-            </button>
-            <button
-              disabled={saving}
-              onClick={backToList}
-              style={{
-                padding: "10px 14px",
-                borderRadius: 10,
-                border: "1px solid rgba(255,255,255,0.15)",
-                background: "rgba(255,80,80,0.6)",
-                color: "inherit",
-                cursor: "pointer",
-                minWidth: 170
-              }}
-            >
+            </Button>
+            <Button disabled={saving} onClick={backToList} className="btn--danger minw-170">
               Descartar
-            </button>
+            </Button>
           </div>
 
-          {saving ? <div style={{ opacity: 0.75 }}>Procesando...</div> : null}
+          {saving ? <div className="hint">Procesando...</div> : null}
         </div>
       )}
     </div>

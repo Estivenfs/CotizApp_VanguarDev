@@ -1,6 +1,4 @@
-import type { CSSProperties } from "react";
-
-export function ArrowMark(props: { size?: number; color?: string; style?: CSSProperties }) {
+export function ArrowMark(props: { size?: number; color?: string }) {
   const size = props.size ?? 44;
   const color = props.color ?? "#0f172a";
   return (
@@ -9,7 +7,6 @@ export function ArrowMark(props: { size?: number; color?: string; style?: CSSPro
       height={size}
       viewBox="0 0 64 64"
       fill="none"
-      style={props.style}
       aria-hidden
     >
       <path

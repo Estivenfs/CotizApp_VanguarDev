@@ -38,6 +38,11 @@
   position: relative;
 }
 
+.loginTopMark {
+  margin-left: 6px;
+  width: fit-content;
+}
+
 .loginHeader {
   display: grid;
   gap: 6px;
@@ -140,4 +145,3 @@
   border-radius: 8px;
   color: #f8fafc;
 }
-

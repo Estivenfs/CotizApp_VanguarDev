@@ -1,0 +1,167 @@
+.layoutRoot {
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.layoutRow {
+  display: flex;
+  gap: 18px;
+  align-items: stretch;
+}
+
+.layoutMain {
+  flex: 1;
+  min-width: 0;
+}
+
+.layoutMainCard {
+  min-height: calc(100vh - 48px);
+  border-radius: 28px;
+  background: radial-gradient(1200px 600px at 30% 30%, #f8fafc 0%, #f1f5f9 55%, #eef2f7 100%);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  box-shadow: var(--shadow);
+  padding: 26px;
+}
+
+.sidenav {
+  transition: width 180ms ease;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 26px;
+  box-shadow: 0 14px 40px rgba(15, 23, 42, 0.12);
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 14px;
+  backdrop-filter: blur(10px);
+}
+
+.sidenav--collapsed {
+  width: 76px;
+  padding: 12px;
+}
+
+.sidenav--expanded {
+  width: 240px;
+  padding: 14px;
+}
+
+.sidenavLogo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidenavSection {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.sidenavItem {
+  height: 44px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 14px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 140ms ease;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.sidenav--collapsed .sidenavItem {
+  padding: 0 10px;
+}
+
+.sidenav--expanded .sidenavItem {
+  padding: 0 12px;
+}
+
+.sidenavItemIcon {
+  width: 28px;
+  display: grid;
+  place-items: center;
+}
+
+.sidenavItemLabel {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.sidenavItemArrow {
+  margin-left: auto;
+  opacity: 0.4;
+}
+
+.sidenavItem--inactive {
+  opacity: 0.55;
+}
+
+.sidenavItem[aria-current="page"] {
+  background: rgba(17, 24, 39, 0.08);
+}
+
+.sidenavDivider {
+  height: 1px;
+  background: rgba(17, 24, 39, 0.08);
+  margin: 10px 6px;
+}
+
+.sidenavFooterDivider {
+  height: 1px;
+  background: rgba(17, 24, 39, 0.08);
+  margin: 0 6px;
+}
+
+.userCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+}
+
+.sidenav--collapsed .userCard {
+  padding: 10px 8px;
+}
+
+.sidenav--expanded .userCard {
+  padding: 10px 10px;
+}
+
+.userAvatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.12);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: #111827;
+}
+
+.userName {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.userInfo {
+  display: grid;
+}
+
+.logoutBtn {
+  margin-left: auto;
+  height: 34px;
+  width: 34px;
+  border-radius: 12px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  background: transparent;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
