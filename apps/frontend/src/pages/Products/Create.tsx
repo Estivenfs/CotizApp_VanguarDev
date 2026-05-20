@@ -3,7 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../../components/common/Button";
 import * as productService from "../../services/product.service";
 import type { Product } from "../../types";
-import "../../styles/clients.css";
+import { ReturnIcon } from "../../components/common/Icons";
+import "../../styles/products.css";
 
 const EXCHANGE_RATE = 1000; // 1 USD = 1000 ARS
 
@@ -19,12 +20,6 @@ const emptyDraft: ProductDraft = {
   garantia: "12 meses",
   estado: "Activo"
 };
-
-const ReturnIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-    <path d="M9 14L4 9M4 9L9 4M4 9H14C17.866 9 21 12.134 21 16C21 19.866 17.866 23 14 23H10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
 
 export function ProductCreate() {
   const [draft, setDraft] = useState<ProductDraft>(emptyDraft);
@@ -96,57 +91,54 @@ export function ProductCreate() {
 
   return (
     <div className="page">
-      <div className="pageHeader" style={{ borderBottom: "1px solid var(--border)", paddingBottom: 24, marginBottom: 8 }}>
+      <div className="productsPageHeader">
         <div>
           <h1 className="pageTitle">Productos</h1>
-          <div className="pageSubtitle" style={{ marginTop: 8 }}>
-            <Link to="/products" style={{ textDecoration: "none", color: "inherit", opacity: 0.8 }}>Productos</Link> 
-            <span style={{ margin: "0 6px", opacity: 0.5 }}>›</span> 
-            <span style={{ fontWeight: 600 }}>Agregar nuevo producto</span>
+          <div className="pageSubtitle productsPageSubtitle">
+            <Link to="/products" className="productsBreadcrumbLink">Productos</Link> 
+            <span className="productsBreadcrumbSeparator">›</span> 
+            <span className="productsBreadcrumbCurrent">Agregar nuevo producto</span>
           </div>
         </div>
         <div className="actions">
-          <Button onClick={() => navigate("/products")} className="btn--ghost" style={{ border: "none", fontWeight: 600, display: "flex", gap: 8 }}>
+          <Button onClick={() => navigate("/products")} className="btn--ghost btn--return">
             <ReturnIcon /> Volver
           </Button>
         </div>
       </div>
 
-      <div className="stack maxw-820" style={{ maxWidth: 840 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, margin: "10px 0 20px" }}>Nuevo producto</h2>
+      <div className="stack createStack">
+        <h2 className="createTitle">Nuevo producto</h2>
         
-        <div className="formGrid formGrid--2" style={{ gap: 24 }}>
+        <div className="formGrid formGrid--2 formGrid--gap">
           {/* Left Column */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <div className="formCol">
             <label className="field">
               <span className="label">Nombre</span>
               <input
                 value={draft.nombre}
                 onChange={(e) => setDraft((d) => ({ ...d, nombre: e.target.value }))}
-                className="input"
-                style={{ background: "rgba(17,24,39,0.06)", border: "none" }}
+                className="input formInput"
               />
             </label>
-            <label className="field" style={{ flex: 1 }}>
+            <label className="field flex-1">
               <span className="label">Descripción</span>
               <textarea
                 value={draft.descripcion ?? ""}
                 onChange={(e) => setDraft((d) => ({ ...d, descripcion: e.target.value }))}
-                className="textarea"
-                style={{ background: "rgba(17,24,39,0.06)", border: "none", flex: 1 }}
+                className="textarea formTextarea"
               />
             </label>
           </div>
 
           {/* Right Column */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <div className="formCol">
             <label className="field">
               <span className="label">SKU</span>
               <input
                 value={draft.sku ?? ""}
                 onChange={(e) => setDraft((d) => ({ ...d, sku: e.target.value }))}
-                className="input"
-                style={{ background: "rgba(17,24,39,0.06)", border: "none" }}
+                className="input formInput"
               />
             </label>
             <label className="field">
@@ -155,28 +147,25 @@ export function ProductCreate() {
                 placeholder="Ilimitado"
                 value={stockInput}
                 onChange={(e) => setStockInput(e.target.value)}
-                className="input"
-                style={{ background: "rgba(17,24,39,0.06)", border: "none" }}
+                className="input formInput"
               />
             </label>
             
-            <div style={{ display: "flex", gap: 12 }}>
-              <label className="field" style={{ flex: 1 }}>
+            <div className="flexRow">
+              <label className="field flex-1">
                 <span className="label">Precio USD</span>
                 <input
                   value={draft.precio_usd}
                   onChange={(e) => handleUsdChange(e.target.value)}
-                  className="input"
-                  style={{ background: "rgba(17,24,39,0.06)", border: "none" }}
+                  className="input formInput"
                 />
               </label>
-              <label className="field" style={{ flex: 1 }}>
+              <label className="field flex-1">
                 <span className="label">Precio ARS (Tasa $1000)</span>
                 <input
                   value={draft.precio_ars}
                   onChange={(e) => handleArsChange(e.target.value)}
-                  className="input"
-                  style={{ background: "rgba(17,24,39,0.06)", border: "none" }}
+                  className="input formInput"
                 />
               </label>
             </div>
@@ -186,8 +175,7 @@ export function ProductCreate() {
               <select
                 value={draft.garantia ?? ""}
                 onChange={(e) => setDraft((d) => ({ ...d, garantia: e.target.value }))}
-                className="select"
-                style={{ background: "rgba(17,24,39,0.06)", border: "none" }}
+                className="select formInput"
               >
                 <option value="Sin garantía">Sin garantía</option>
                 <option value="6 meses">6 meses</option>
@@ -198,13 +186,13 @@ export function ProductCreate() {
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "flex-start", marginTop: 10 }}>
-          <Button disabled={loading} onClick={() => void onSave()} style={{ background: "#18181b", color: "#fff", width: "100%", maxWidth: 160, border: "none" }}>
+        <div className="saveContainer">
+          <Button disabled={loading} onClick={() => void onSave()} className="btn--save">
             Guardar
           </Button>
         </div>
 
-        {error ? <div className="error" style={{ marginTop: 16 }}>{error}</div> : null}
+        {error ? <div className="error errorMargin">{error}</div> : null}
       </div>
     </div>
   );

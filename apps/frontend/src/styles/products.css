@@ -1,0 +1,161 @@
+.productsPageHeader {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 24px;
+  margin-bottom: 8px;
+}
+
+.productsPageSubtitle {
+  margin-top: 8px;
+}
+
+.productsBreadcrumbLink {
+  text-decoration: none;
+  color: inherit;
+  opacity: 0.8;
+}
+
+.productsBreadcrumbSeparator {
+  margin: 0 6px;
+  opacity: 0.5;
+}
+
+.productsBreadcrumbCurrent {
+  font-weight: 600;
+}
+
+.productsHeaderActions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn--importExport {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: #111827;
+  font-weight: 600;
+}
+
+.btn--importExportIcon {
+  margin-right: 8px;
+}
+
+.btn--newProduct {
+  background: #111827;
+  color: #fff;
+  border: none;
+  font-weight: 600;
+}
+
+.btn--return {
+  border: none;
+  font-weight: 600;
+  display: flex;
+  gap: 8px;
+}
+
+.searchIconWrapper {
+  opacity: 0.5;
+}
+
+.btn--filter {
+  background: rgba(17,24,39,0.05);
+  border: none;
+  font-weight: 500;
+  display: flex;
+  gap: 8px;
+}
+
+.checkboxCol {
+  width: 40px;
+}
+
+.colName {
+  font-weight: 500;
+}
+
+.productLink {
+  text-decoration: none;
+  color: inherit;
+}
+
+.colDescription {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.priceUsd {
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.colActions {
+  text-align: center;
+}
+
+.btn--actionMenu {
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.createTitle {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 10px 0 20px;
+}
+
+.createStack {
+  max-width: 840px;
+}
+
+.formGrid--gap {
+  gap: 24px;
+}
+
+.formCol {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.flexRow {
+  display: flex;
+  gap: 12px;
+}
+
+.formInput {
+  background: rgba(17,24,39,0.06);
+  border: none;
+}
+
+.formTextarea {
+  background: rgba(17,24,39,0.06);
+  border: none;
+  flex: 1;
+}
+
+.btn--save {
+  background: #18181b;
+  color: #fff;
+  width: 100%;
+  max-width: 160px;
+  border: none;
+}
+
+.saveContainer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  margin-top: 10px;
+}
+
+.errorMargin {
+  margin-top: 16px;
+}
