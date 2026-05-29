@@ -33,6 +33,12 @@ export async function apiRequest<T>(input: {
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      sessionStorage.removeItem("cotizapp_token");
+      sessionStorage.removeItem("cotizapp_user");
+      window.location.href = "/login";
+      throw new Error("unauthorized");
+    }
     const text = await response.text().catch(() => "");
     const error = new Error(text || `HTTP ${response.status}`);
     (error as Error & { status?: number }).status = response.status;
@@ -72,6 +78,12 @@ export async function apiRequestBlob(input: {
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      sessionStorage.removeItem("cotizapp_token");
+      sessionStorage.removeItem("cotizapp_user");
+      window.location.href = "/login";
+      throw new Error("unauthorized");
+    }
     const text = await response.text().catch(() => "");
     const error = new Error(text || `HTTP ${response.status}`);
     (error as Error & { status?: number }).status = response.status;

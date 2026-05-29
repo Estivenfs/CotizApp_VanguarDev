@@ -26,7 +26,7 @@ export default function App() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/clients/*" element={<ClientsPage />} />
         <Route path="/products/*" element={<ProductsPage />} />
-        <Route path="/quotes" element={<QuotesPage />} />
+        <Route path="/quotes/*" element={<QuotesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

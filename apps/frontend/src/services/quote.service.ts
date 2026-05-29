@@ -70,3 +70,57 @@ export async function createQuote(input: CreateQuoteInput) {
 export async function downloadQuotePdf(id: number) {
   return apiRequestBlob({ path: `/api/quotes/${id}/pdf`, accept: "application/pdf" });
 }
+
+export type QuoteDetailItem = {
+  id: number;
+  id_cotizacion: number;
+  id_producto: number;
+  cantidad: number;
+  precio_unitario_momento: string;
+  descuento_porcentaje: string;
+  producto_nombre: string;
+};
+
+export type QuoteDetailResult = {
+  ok: true;
+  quote: {
+    id: number;
+    id_cliente: number;
+    id_usuario: number;
+    fecha_emision: string;
+    fecha_vencimiento: string | null;
+    moneda: CurrencyCode;
+    tipo_cambio: string;
+    subtotal: string;
+    iva_porcentaje: string;
+    descuento_global: string;
+    total_final: string;
+    estado: string;
+    notas: string | null;
+    plazo_entrega: string | null;
+    forma_pago: string | null;
+    lugar_entrega: string | null;
+    mantenimiento_oferta: string | null;
+    proxima_alerta: string | null;
+  };
+  items: QuoteDetailItem[];
+  client: {
+    id: number;
+    nombre_empresa: string;
+    contacto_principal: string | null;
+    cuit_tax_id: string | null;
+    clasificacion: string | null;
+  };
+};
+
+export async function getQuote(id: number) {
+  return apiRequest<QuoteDetailResult>({ path: `/api/quotes/${id}` });
+}
+
+export async function updateQuote(id: number, data: { estado?: string; proxima_alerta?: string | null }) {
+  return apiRequest<{ ok: true }>({
+    path: `/api/quotes/${id}`,
+    method: "PATCH",
+    body: data
+  });
+}

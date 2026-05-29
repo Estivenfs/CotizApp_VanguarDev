@@ -5,7 +5,8 @@ import {
   createQuoteTransactional,
   getQuoteById,
   listQuoteItems,
-  listQuotes
+  listQuotes,
+  updateQuote
 } from "../models/quote.model.js";
 import { generateQuotePdfBuffer } from "../services/pdf.service.js";
 import {
@@ -228,4 +229,52 @@ export async function getQuotePdfHandler(req: Request, res: Response) {
   res.setHeader("X-Quote-Moneda", quote.moneda);
   res.setHeader("X-Quote-Items", String(items.length));
   res.send(pdf);
+}
+
+export async function getQuoteHandler(req: Request, res: Response) {
+  const id = parseId(req.params.id);
+  if (!id) {
+    res.status(400).json({ ok: false, error: "invalid_id" });
+    return;
+  }
+
+  const quote = await getQuoteById(id);
+  if (!quote) {
+    res.status(404).json({ ok: false, error: "not_found" });
+    return;
+  }
+
+  const items = await listQuoteItems(id);
+  const client = await getClientById(Number(quote.id_cliente));
+
+  res.json({ ok: true, quote, items, client });
+}
+
+export async function updateQuoteHandler(req: Request, res: Response) {
+  const id = parseId(req.params.id);
+  if (!id) {
+    res.status(400).json({ ok: false, error: "invalid_id" });
+    return;
+  }
+
+  const data: { estado?: string; proxima_alerta?: string | null } = {};
+
+  if (req.body?.estado) {
+    const estadoRaw = req.body.estado.trim();
+    if (allowedEstados.has(estadoRaw)) {
+      data.estado = estadoRaw;
+    }
+  }
+
+  if (req.body?.proxima_alerta !== undefined) {
+    data.proxima_alerta = req.body.proxima_alerta ? parseIsoDateOrNull(req.body.proxima_alerta) : null;
+  }
+
+  const success = await updateQuote(id, data);
+  if (!success) {
+    res.status(404).json({ ok: false, error: "not_found_or_no_changes" });
+    return;
+  }
+
+  res.json({ ok: true });
 }

@@ -220,3 +220,29 @@ export async function createQuoteTransactional(input: CreateQuoteInput) {
     client.release();
   }
 }
+
+export async function updateQuote(id: number, data: { estado?: string; proxima_alerta?: string | null }) {
+  const updates: string[] = [];
+  const values: unknown[] = [];
+  let idx = 1;
+
+  if (data.estado !== undefined) {
+    updates.push(`estado = $${idx++}`);
+    values.push(data.estado);
+  }
+
+  if (data.proxima_alerta !== undefined) {
+    updates.push(`proxima_alerta = $${idx++}`);
+    values.push(data.proxima_alerta);
+  }
+
+  if (updates.length === 0) return true;
+
+  values.push(id);
+  const result = await pool.query(
+    `update cotizaciones set ${updates.join(", ")} where id = $${idx}`,
+    values
+  );
+
+  return result.rowCount ? result.rowCount > 0 : false;
+}
