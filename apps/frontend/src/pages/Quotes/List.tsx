@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ActionMenu } from "../../components/common/ActionMenu";
 import { Button } from "../../components/common/Button";
 import * as quoteService from "../../services/quote.service";
 import "../../styles/quotes.css";
@@ -25,8 +26,6 @@ export default function QuotesList() {
   const [q, setQ] = useState("");
   const [fromDate, setFromDate] = useState<string>("");
   const [toDate, setToDate] = useState<string>("");
-
-  const [menuOpenId, setMenuOpenId] = useState<number | null>(null);
 
   const [statusModalQuote, setStatusModalQuote] = useState<quoteService.QuoteListItem | null>(null);
   const [newStatus, setNewStatus] = useState("");
@@ -156,7 +155,7 @@ export default function QuotesList() {
   }
 
   return (
-    <div className="page" onClick={() => setMenuOpenId(null)}>
+    <div className="page">
       <div className="stack">
         <div>
           <div className="pageHeader">
@@ -245,38 +244,40 @@ export default function QuotesList() {
                       <span className={st.className}>{st.label}</span>
                     </td>
                     <td className="cellMuted">{formatAlert(r.proxima_alerta)}</td>
-                    <td style={{ position: "relative" }}>
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setMenuOpenId(menuOpenId === r.id ? null : r.id);
-                        }}
-                        className="btn--icon btn--ghost"
-                        title="Opciones"
-                      >
-                        ⋮
-                      </Button>
-                      {menuOpenId === r.id && (
-                        <div className="dropdownMenu">
-                          <button onClick={() => navigate(`/quotes/${r.id}`)}>Ver</button>
-                          <button onClick={() => {
-                            setNewStatus(r.estado);
-                            setStatusModalQuote(r);
-                          }}>Cambiar Estado</button>
-                          <button onClick={() => {
-                            setNewAlertDate(r.proxima_alerta ? r.proxima_alerta.split("T")[0] : "");
-                            setAlertModalQuote(r);
-                          }}>Modificar Alerta</button>
-                          <button onClick={async () => {
-                            try {
-                              const pdf = await quoteService.downloadQuotePdf(r.id);
-                              downloadBlob(pdf.blob, pdf.filename ?? `cotizacion-${r.id}.pdf`);
-                            } catch (err) {
-                              setError(err instanceof Error ? err.message : "download_error");
+                    <td className="tableActionsCell">
+                      <ActionMenu
+                        items={[
+                          {
+                            label: "Ver",
+                            onClick: () => navigate(`/quotes/${r.id}`)
+                          },
+                          {
+                            label: "Cambiar Estado",
+                            onClick: () => {
+                              setNewStatus(r.estado);
+                              setStatusModalQuote(r);
                             }
-                          }}>Descargar PDF</button>
-                        </div>
-                      )}
+                          },
+                          {
+                            label: "Modificar Alerta",
+                            onClick: () => {
+                              setNewAlertDate(r.proxima_alerta ? r.proxima_alerta.split("T")[0] : "");
+                              setAlertModalQuote(r);
+                            }
+                          },
+                          {
+                            label: "Descargar PDF",
+                            onClick: async () => {
+                              try {
+                                const pdf = await quoteService.downloadQuotePdf(r.id);
+                                downloadBlob(pdf.blob, pdf.filename ?? `cotizacion-${r.id}.pdf`);
+                              } catch (err) {
+                                setError(err instanceof Error ? err.message : "download_error");
+                              }
+                            }
+                          }
+                        ]}
+                      />
                     </td>
                   </tr>
                 );

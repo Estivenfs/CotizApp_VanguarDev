@@ -78,6 +78,18 @@
   color: inherit;
 }
 
+.productLinkButton {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.productLinkButton:hover {
+  color: var(--primary);
+}
+
 .colDescription {
   max-width: 200px;
   white-space: nowrap;
@@ -92,13 +104,6 @@
 
 .colActions {
   text-align: center;
-}
-
-.btn--actionMenu {
-  background: none;
-  border: none;
-  cursor: pointer;
-  opacity: 0.6;
 }
 
 .createTitle {

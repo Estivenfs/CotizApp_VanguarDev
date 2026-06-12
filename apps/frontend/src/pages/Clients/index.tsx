@@ -8,6 +8,7 @@ export default function ClientsPage() {
     <Routes>
       <Route path="/" element={<ClientsList />} />
       <Route path="/new" element={<ClientCreate />} />
+      <Route path="/:id/edit" element={<ClientCreate />} />
       <Route path="/:id" element={<ClientView />} />
     </Routes>
   );

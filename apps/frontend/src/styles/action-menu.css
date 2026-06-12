@@ -1,0 +1,43 @@
+.actionMenu {
+  position: relative;
+  display: inline-flex;
+}
+
+.actionMenu__trigger {
+  min-width: 40px;
+  justify-content: center;
+}
+
+.actionMenu__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 180px;
+  padding: 8px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+  z-index: 30;
+}
+
+.actionMenu__item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  border-radius: 12px;
+  padding: 10px 12px;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.actionMenu__item:hover {
+  background: rgba(124, 58, 237, 0.08);
+}
+
+.actionMenu__item--danger {
+  color: #b91c1c;
+}

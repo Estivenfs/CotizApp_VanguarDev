@@ -113,7 +113,6 @@ export default function QuotesCreate() {
   const [plazoEntrega, setPlazoEntrega] = useState("");
   const [formaPago, setFormaPago] = useState("");
   const [lugarEntrega, setLugarEntrega] = useState("");
-  const [mantenimientoOferta, setMantenimientoOferta] = useState("");
 
   async function reloadCatalog() {
     setLoading(true);
@@ -281,7 +280,6 @@ export default function QuotesCreate() {
         plazo_entrega: plazoEntrega,
         forma_pago: formaPago,
         lugar_entrega: lugarEntrega,
-        mantenimiento_oferta: mantenimientoOferta,
         items: payloadItems
       });
       navigate("/quotes");
@@ -321,7 +319,6 @@ export default function QuotesCreate() {
         plazo_entrega: plazoEntrega,
         forma_pago: formaPago,
         lugar_entrega: lugarEntrega,
-        mantenimiento_oferta: mantenimientoOferta,
         items: payloadItems
       });
 
@@ -549,10 +546,6 @@ export default function QuotesCreate() {
                   </option>
                 ))}
               </select>
-            </label>
-            <label className="field">
-              <span className="label">Mantenimiento de oferta</span>
-              <input value={mantenimientoOferta} onChange={(e) => setMantenimientoOferta(e.target.value)} placeholder="Seleccionar" className="input" />
             </label>
           </div>
 

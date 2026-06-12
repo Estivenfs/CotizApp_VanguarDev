@@ -94,7 +94,6 @@ export async function createQuoteHandler(req: Request, res: Response) {
   const plazoEntrega = parseTextOrNull(req.body?.plazo_entrega);
   const formaPago = parseTextOrNull(req.body?.forma_pago);
   const lugarEntrega = parseTextOrNull(req.body?.lugar_entrega);
-  const mantenimientoOferta = parseTextOrNull(req.body?.mantenimiento_oferta);
 
   const items = Array.isArray(req.body?.items) ? (req.body.items as unknown[]) : [];
   const itemsWithProduct = items.filter((it) => parseNumericId((it as any)?.id_producto));
@@ -219,7 +218,6 @@ export async function createQuoteHandler(req: Request, res: Response) {
     plazoEntrega,
     formaPago,
     lugarEntrega,
-    mantenimientoOferta,
     proximaAlertaIso,
     items: itemsToInsert
   });

@@ -81,9 +81,53 @@
   color: #166534;
 }
 
-.statusPill--baja {
+.statusPill--pausado {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.statusPill--baja,
+.statusPill--desactivado {
   background: #fee2e2;
   color: #991b1b;
+}
+
+.btnIconLead {
+  margin-right: 8px;
+}
+
+.btnInlineIcon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tableLink {
+  text-decoration: none;
+  color: inherit;
+}
+
+.tableLink:hover {
+  color: var(--primary);
+}
+
+.tableActionsCell {
+  text-align: center;
+}
+
+.modalField {
+  margin-top: 16px;
+}
+
+.modalControl {
+  width: 100%;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
 }
 
 /* Detail View */

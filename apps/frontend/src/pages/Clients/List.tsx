@@ -1,21 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { ActionMenu } from "../../components/common/ActionMenu";
 import { Button } from "../../components/common/Button";
 import type { Client } from "../../types";
 import * as clientService from "../../services/client.service";
 import "../../styles/clients.css";
-
-const SearchIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-    <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-const CalendarIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-    <path d="M8 7V3M16 7V3M7 11H17M5 21H19C20.1046 21 21 20.1046 21 19V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7V19C3 20.1046 3.89543 21 5 21Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
 
 const FilterIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -23,28 +12,43 @@ const FilterIcon = () => (
   </svg>
 );
 
-const DotsIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-    <path d="M12 13C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11C11.4477 11 11 11.4477 11 12C11 12.5523 11.4477 13 12 13Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M12 6C12.5523 6 13 5.55228 13 5C13 4.44772 12.5523 4 12 4C11.4477 4 11 4.44772 11 5C11 5.55228 11.4477 6 12 6Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M12 20C12.5523 20 13 19.5523 13 19C13 18.4477 12.5523 18 12 18C11.4477 18 11 18.4477 11 19C11 19.5523 11.4477 20 12 20Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
+function normalizeClientStatus(status: string | null | undefined) {
+  const value = (status ?? "").trim().toLowerCase();
+  if (value === "activo") return "activo";
+  if (value === "pausado") return "pausado";
+  if (value === "desactivado" || value === "baja") return "desactivado";
+  return "activo";
+}
+
+function getClientStatusMeta(status: string | null | undefined) {
+  const normalized = normalizeClientStatus(status);
+  if (normalized === "pausado") {
+    return { className: "statusPill statusPill--pausado", label: "Pausado" };
+  }
+  if (normalized === "desactivado") {
+    return { className: "statusPill statusPill--desactivado", label: "Desactivado" };
+  }
+  return { className: "statusPill statusPill--activo", label: "Activo" };
+}
 
 export function ClientsList() {
   const [items, setItems] = useState<Client[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [activeTab, setActiveTab] = useState("Todos");
+  const [statusModalClient, setStatusModalClient] = useState<Client | null>(null);
+  const [newStatus, setNewStatus] = useState("Activo");
   const navigate = useNavigate();
 
   async function reload() {
     setLoading(true);
+    setError(null);
     try {
       const data = await clientService.listClients();
       setItems(data);
     } catch (err) {
-      console.error(err);
+      setError(err instanceof Error ? err.message : "load_error");
     } finally {
       setLoading(false);
     }
@@ -56,8 +60,8 @@ export function ClientsList() {
 
   const filtered = useMemo(() => {
     let result = items;
-    if (activeTab === "Activos") result = result.filter(c => c.estado !== "Baja");
-    if (activeTab === "Bajas") result = result.filter(c => c.estado === "Baja");
+    if (activeTab === "Activos") result = result.filter((c) => normalizeClientStatus(c.estado) === "activo");
+    if (activeTab === "Bajas") result = result.filter((c) => normalizeClientStatus(c.estado) === "desactivado");
 
     const q = filter.trim().toLowerCase();
     if (q) {
@@ -73,6 +77,21 @@ export function ClientsList() {
     return result;
   }, [filter, items, activeTab]);
 
+  async function handleUpdateStatus() {
+    if (!statusModalClient) return;
+    try {
+      const { id, ...payload } = statusModalClient;
+      const updated = await clientService.updateClient(id, {
+        ...payload,
+        estado: newStatus
+      });
+      setItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
+      setStatusModalClient(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "update_error");
+    }
+  }
+
   return (
     <div className="page">
       <div>
@@ -83,10 +102,10 @@ export function ClientsList() {
         </div>
         <div className="actions">
           <Button className="btn--ghost">
-            <span style={{ marginRight: 8 }}>↑</span> Importar
+            <span className="btnIconLead">↑</span> Importar
           </Button>
           <Button className="btn--ghost">
-            <span style={{ marginRight: 8 }}>↓</span> Exportar lista
+            <span className="btnIconLead">↓</span> Exportar lista
           </Button>
           <Button onClick={() => navigate("/clients/new")} className="btn--primary">
             + Nuevo cliente
@@ -112,19 +131,20 @@ export function ClientsList() {
           <span className="hint">—</span>
           <input type="date" className="input" />
         </div>
-          <Button className="btn--ghost" style={{ display: "flex", gap: 8 }}>
+          <Button className="btn--ghost btnInlineIcon">
             <FilterIcon /> Filtrar
           </Button>
         </div>
       </div>
 
+      {error ? <div className="error">{error}</div> : null}
       {loading ? <div className="hint">Cargando...</div> : null}
 
       <div className="tableWrap">
         <table className="table table--min980">
           <thead>
             <tr>
-              <th style={{ width: 40 }}><input type="checkbox" /></th>
+              <th className="colCheckbox"><input type="checkbox" /></th>
               <th>Nombre / Razón Social</th>
               <th>CUIT</th>
               <th>Telefono</th>
@@ -132,15 +152,17 @@ export function ClientsList() {
               <th>Tipo</th>
               <th>Estado</th>
               <th>Ult. contacto</th>
-              <th style={{ textAlign: "center" }}>Acciones</th>
+              <th className="tableActionsCell">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((c) => (
+            {filtered.map((c) => {
+              const statusMeta = getClientStatusMeta(c.estado);
+              return (
               <tr key={c.id}>
-                <td><input type="checkbox" /></td>
+                <td className="colCheckbox"><input type="checkbox" /></td>
                 <td style={{ fontWeight: 500 }}>
-                  <Link style={{ textDecoration: "none", color: "inherit" }} to={`/clients/${c.id}`}>
+                  <Link className="tableLink" to={`/clients/${c.id}`}>
                     {c.nombre_empresa}
                   </Link>
                 </td>
@@ -149,21 +171,33 @@ export function ClientsList() {
                 <td>{c.email ?? "-"}</td>
                 <td>{c.clasificacion ?? "-"}</td>
                 <td>
-                  <span className={`statusPill statusPill--${c.estado?.toLowerCase() === "baja" ? "baja" : "activo"}`}>
-                    {c.estado ?? "Activo"}
+                  <span className={statusMeta.className}>
+                    {statusMeta.label}
                   </span>
                 </td>
                 <td>{c.ult_contacto ? new Date(c.ult_contacto).toLocaleDateString() : "17/04/2026"}</td>
-                <td style={{ textAlign: "center" }}>
-                  <button style={{ background: "none", border: "none", cursor: "pointer", opacity: 0.6 }}>
-                    <DotsIcon />
-                  </button>
+                <td className="tableActionsCell">
+                  <ActionMenu
+                    items={[
+                      {
+                        label: "Editar",
+                        onClick: () => navigate(`/clients/${c.id}/edit`)
+                      },
+                      {
+                        label: "Cambiar Estado",
+                        onClick: () => {
+                          setNewStatus(getClientStatusMeta(c.estado).label);
+                          setStatusModalClient(c);
+                        }
+                      }
+                    ]}
+                  />
                 </td>
               </tr>
-            ))}
+            )})}
             {!filtered.length && !loading ? (
               <tr>
-                <td className="cellEmpty" colSpan={9} style={{ textAlign: "center" }}>
+                <td className="cellEmpty" colSpan={9}>
                   No se encontraron clientes.
                 </td>
               </tr>
@@ -171,6 +205,30 @@ export function ClientsList() {
           </tbody>
         </table>
       </div>
+
+      {statusModalClient ? (
+        <div className="modalOverlay" onClick={() => setStatusModalClient(null)}>
+          <div className="modalContent" onClick={(event) => event.stopPropagation()}>
+            <h3>Cambiar Estado</h3>
+            <p>{statusModalClient.nombre_empresa}</p>
+            <div className="modalField">
+              <select value={newStatus} onChange={(event) => setNewStatus(event.target.value)} className="select modalControl">
+                <option value="Activo">Activo</option>
+                <option value="Pausado">Pausado</option>
+                <option value="Desactivado">Desactivado</option>
+              </select>
+            </div>
+            <div className="modalActions">
+              <Button onClick={() => setStatusModalClient(null)} className="btn--ghost">
+                Cancelar
+              </Button>
+              <Button onClick={() => void handleUpdateStatus()} className="btn--primary">
+                Guardar
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

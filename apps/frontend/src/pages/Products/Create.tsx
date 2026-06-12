@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../components/common/Button";
 import * as productService from "../../services/product.service";
 import * as configService from "../../services/config.service";
@@ -21,6 +21,8 @@ const emptyDraft: ProductDraft = {
 };
 
 export function ProductCreate() {
+  const { id } = useParams();
+  const isEditMode = Boolean(id);
   const [draft, setDraft] = useState<ProductDraft>(emptyDraft);
   const [stockInput, setStockInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,6 +43,30 @@ export function ProductCreate() {
     }
     void fetchRate();
   }, []);
+
+  useEffect(() => {
+    if (!id) return;
+
+    async function loadProduct() {
+      setLoading(true);
+      setError(null);
+      try {
+        const product = await productService.getProduct(Number(id));
+        const { id: _id, ...rest } = product;
+        setDraft({
+          ...emptyDraft,
+          ...rest
+        });
+        setStockInput(product.stock === -1 ? "" : String(product.stock));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al cargar producto");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadProduct();
+  }, [id]);
 
   function handleUsdChange(value: string) {
     const usdNum = parseFloat(value.replace(",", "."));
@@ -88,13 +114,20 @@ export function ProductCreate() {
 
     setLoading(true);
     try {
-      await productService.createProduct({
+      const payload = {
         ...draft,
         nombre,
         precio_ars: ars.toString(),
         precio_usd: usd.toString(),
         stock: stockParsed
-      });
+      };
+
+      if (isEditMode && id) {
+        await productService.updateProduct(Number(id), payload);
+      } else {
+        await productService.createProduct(payload);
+      }
+
       navigate("/products");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al guardar");
@@ -111,7 +144,7 @@ export function ProductCreate() {
           <div className="pageSubtitle productsPageSubtitle">
             <Link to="/products" className="productsBreadcrumbLink">Productos</Link> 
             <span className="productsBreadcrumbSeparator">›</span> 
-            <span className="productsBreadcrumbCurrent">Agregar nuevo producto</span>
+            <span className="productsBreadcrumbCurrent">{isEditMode ? "Editar producto" : "Agregar nuevo producto"}</span>
           </div>
         </div>
         <div className="actions">
@@ -122,7 +155,7 @@ export function ProductCreate() {
       </div>
 
       <div className="stack createStack">
-        <h2 className="createTitle">Nuevo producto</h2>
+        <h2 className="createTitle">{isEditMode ? "Editar producto" : "Nuevo producto"}</h2>
         
         <div className="formGrid formGrid--2 formGrid--gap">
           {/* Left Column */}
@@ -202,7 +235,7 @@ export function ProductCreate() {
 
         <div className="saveContainer">
           <Button disabled={loading} onClick={() => void onSave()} className="btn--save">
-            Guardar
+            {isEditMode ? "Guardar cambios" : "Guardar"}
           </Button>
         </div>
 

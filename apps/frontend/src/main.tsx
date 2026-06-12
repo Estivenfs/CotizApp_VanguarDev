@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AuthProvider } from "./context/AuthContext";
 import "./styles/app.css";
+import "./styles/action-menu.css";
 import "./styles/layout.css";
 import "./styles/pages.css";
 import "./styles/quotes.css";

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { ActionMenu } from "../../components/common/ActionMenu";
 import { Button } from "../../components/common/Button";
 import type { Product } from "../../types";
 import * as productService from "../../services/product.service";
 import { formatMoney } from "../../utils/currency";
-import { SearchIcon, FilterIcon, DotsIcon } from "../../components/common/Icons";
+import { SearchIcon, FilterIcon } from "../../components/common/Icons";
 import "../../styles/products.css";
 
 function parseMoney(value: string) {
@@ -15,17 +16,40 @@ function parseMoney(value: string) {
 export function ProductsList() {
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [activeTab, setActiveTab] = useState("Todos");
+  const [statusModalProduct, setStatusModalProduct] = useState<Product | null>(null);
+  const [newStatus, setNewStatus] = useState("Activo");
   const navigate = useNavigate();
+
+  function normalizeProductStatus(status: string | null | undefined) {
+    const value = (status ?? "").trim().toLowerCase();
+    if (value === "activo") return "activo";
+    if (value === "pausado") return "pausado";
+    if (value === "desactivado") return "desactivado";
+    return "activo";
+  }
+
+  function getProductStatusMeta(status: string | null | undefined) {
+    const normalized = normalizeProductStatus(status);
+    if (normalized === "pausado") {
+      return { className: "statusPill statusPill--pausado", label: "Pausado" };
+    }
+    if (normalized === "desactivado") {
+      return { className: "statusPill statusPill--desactivado", label: "Desactivado" };
+    }
+    return { className: "statusPill statusPill--activo", label: "Activo" };
+  }
 
   async function reload() {
     setLoading(true);
+    setError(null);
     try {
       const data = await productService.listProducts();
       setItems(data);
     } catch (err) {
-      console.error(err);
+      setError(err instanceof Error ? err.message : "load_error");
     } finally {
       setLoading(false);
     }
@@ -37,8 +61,8 @@ export function ProductsList() {
 
   const filtered = useMemo(() => {
     let result = items;
-    if (activeTab === "Activos") result = result.filter(p => p.estado !== "Desactivado");
-    if (activeTab === "Desactivados") result = result.filter(p => p.estado === "Desactivado");
+    if (activeTab === "Activos") result = result.filter((p) => normalizeProductStatus(p.estado) === "activo");
+    if (activeTab === "Desactivados") result = result.filter((p) => normalizeProductStatus(p.estado) === "desactivado");
 
     const q = filter.trim().toLowerCase();
     if (q) {
@@ -52,6 +76,21 @@ export function ProductsList() {
     }
     return result;
   }, [filter, items, activeTab]);
+
+  async function handleUpdateStatus() {
+    if (!statusModalProduct) return;
+    try {
+      const { id, ...payload } = statusModalProduct;
+      const updated = await productService.updateProduct(id, {
+        ...payload,
+        estado: newStatus
+      });
+      setItems((prev) => prev.map((item) => (item.id === id ? updated : item)));
+      setStatusModalProduct(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "update_error");
+    }
+  }
 
   return (
     <div className="page">
@@ -94,6 +133,7 @@ export function ProductsList() {
         </Button>
       </div>
 
+      {error ? <div className="error">{error}</div> : null}
       {loading ? <div className="hint">Cargando...</div> : null}
 
       <div className="tableWrap">
@@ -115,14 +155,19 @@ export function ProductsList() {
               const ars = parseMoney(p.precio_ars) ?? 0;
               const usd = parseMoney(p.precio_usd) ?? 0;
               const stockLabel = p.stock === -1 ? "Ilimitado" : p.stock;
+              const statusMeta = getProductStatusMeta(p.estado);
               
               return (
                 <tr key={p.id}>
                   <td><input type="checkbox" /></td>
                   <td className="colName">
-                    <Link className="productLink" to={`/products/${p.id}`}>
+                    <button
+                      type="button"
+                      className="productLink productLinkButton"
+                      onClick={() => navigate(`/products/${p.id}/edit`)}
+                    >
                       {p.nombre}
-                    </Link>
+                    </button>
                   </td>
                   <td>{p.sku ?? "-"}</td>
                   <td className="colDescription">
@@ -134,14 +179,26 @@ export function ProductsList() {
                   </td>
                   <td>{stockLabel}</td>
                   <td>
-                    <span className={`statusPill statusPill--${p.estado?.toLowerCase() === "desactivado" ? "baja" : "activo"}`}>
-                      {p.estado ?? "Activo"}
+                    <span className={statusMeta.className}>
+                      {statusMeta.label}
                     </span>
                   </td>
                   <td className="colActions">
-                    <button className="btn--actionMenu">
-                      <DotsIcon />
-                    </button>
+                    <ActionMenu
+                      items={[
+                        {
+                          label: "Editar",
+                          onClick: () => navigate(`/products/${p.id}/edit`)
+                        },
+                        {
+                          label: "Cambiar Estado",
+                          onClick: () => {
+                            setNewStatus(statusMeta.label);
+                            setStatusModalProduct(p);
+                          }
+                        }
+                      ]}
+                    />
                   </td>
                 </tr>
               );
@@ -156,6 +213,30 @@ export function ProductsList() {
           </tbody>
         </table>
       </div>
+
+      {statusModalProduct ? (
+        <div className="modalOverlay" onClick={() => setStatusModalProduct(null)}>
+          <div className="modalContent" onClick={(event) => event.stopPropagation()}>
+            <h3>Cambiar Estado</h3>
+            <p>{statusModalProduct.nombre}</p>
+            <div className="modalField">
+              <select value={newStatus} onChange={(event) => setNewStatus(event.target.value)} className="select modalControl">
+                <option value="Activo">Activo</option>
+                <option value="Pausado">Pausado</option>
+                <option value="Desactivado">Desactivado</option>
+              </select>
+            </div>
+            <div className="modalActions">
+              <Button onClick={() => setStatusModalProduct(null)} className="btn--ghost">
+                Cancelar
+              </Button>
+              <Button onClick={() => void handleUpdateStatus()} className="btn--primary">
+                Guardar
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

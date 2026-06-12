@@ -7,6 +7,7 @@ export default function ProductsPage() {
     <Routes>
       <Route path="/" element={<ProductsList />} />
       <Route path="/new" element={<ProductCreate />} />
+      <Route path="/:id/edit" element={<ProductCreate />} />
     </Routes>
   );
 }

@@ -17,7 +17,6 @@ export type QuoteRow = {
   plazo_entrega?: string | null;
   forma_pago?: string | null;
   lugar_entrega?: string | null;
-  mantenimiento_oferta?: string | null;
   proxima_alerta?: string | null;
 };
 
@@ -119,7 +118,7 @@ export async function getQuoteById(id: number, companyId?: number | null) {
   const result = await pool.query<QuoteRow>(
     `
       select id, id_cliente, id_usuario, fecha_emision, fecha_vencimiento, moneda, tipo_cambio, subtotal, iva_porcentaje,
-             descuento_global, total_final, estado, notas, plazo_entrega, forma_pago, lugar_entrega, mantenimiento_oferta, proxima_alerta
+             descuento_global, total_final, estado, notas, plazo_entrega, forma_pago, lugar_entrega, proxima_alerta
       from cotizaciones
       where id = $1
       ${companySql}
@@ -150,7 +149,7 @@ export async function listQuoteItems(quoteId: number, companyId?: number | null)
       where i.id_cotizacion = $1
       order by i.id asc
     `,
-    [quoteId]
+    values
   );
   return result.rows;
 }
@@ -172,7 +171,6 @@ export type CreateQuoteInput = {
   plazoEntrega: string | null;
   formaPago: string | null;
   lugarEntrega: string | null;
-  mantenimientoOferta: string | null;
   proximaAlertaIso: string | null;
   items: Array<{
     idProducto: number;
@@ -192,9 +190,9 @@ export async function createQuoteTransactional(input: CreateQuoteInput) {
       `
         insert into cotizaciones
           (id_empresa, id_cliente, id_usuario, fecha_emision, fecha_vencimiento, moneda, tipo_cambio, subtotal, iva_porcentaje, descuento_global, total_final, estado,
-           notas, plazo_entrega, forma_pago, lugar_entrega, mantenimiento_oferta, proxima_alerta)
+           notas, plazo_entrega, forma_pago, lugar_entrega, proxima_alerta)
         values
-          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+          ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         returning id
       `,
       [
@@ -214,7 +212,6 @@ export async function createQuoteTransactional(input: CreateQuoteInput) {
         input.plazoEntrega,
         input.formaPago,
         input.lugarEntrega,
-        input.mantenimientoOferta,
         input.proximaAlertaIso
       ]
     );

@@ -57,7 +57,6 @@ CREATE TABLE IF NOT EXISTS cotizaciones (
   plazo_entrega TEXT,
   forma_pago TEXT,
   lugar_entrega TEXT,
-  mantenimiento_oferta TEXT,
   proxima_alerta TIMESTAMPTZ
 );
 
@@ -126,8 +125,8 @@ ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS notas TEXT;
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS plazo_entrega TEXT;
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS forma_pago TEXT;
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS lugar_entrega TEXT;
-ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS mantenimiento_oferta TEXT;
 ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS proxima_alerta TIMESTAMPTZ;
+ALTER TABLE cotizaciones DROP COLUMN IF EXISTS mantenimiento_oferta;
 
 ALTER TABLE items_cotizacion ADD COLUMN IF NOT EXISTS descuento_porcentaje NUMERIC(5, 2) NOT NULL DEFAULT 0;
 ALTER TABLE items_cotizacion ADD COLUMN IF NOT EXISTS iva_porcentaje NUMERIC(5, 2) NOT NULL DEFAULT 21;

@@ -41,7 +41,6 @@ export type CreateQuoteInput = {
   plazo_entrega?: string;
   forma_pago?: string;
   lugar_entrega?: string;
-  mantenimiento_oferta?: string;
   proxima_alerta?: string;
   items: Array<{
     id_producto: number;
@@ -105,7 +104,6 @@ export type QuoteDetailResult = {
     plazo_entrega: string | null;
     forma_pago: string | null;
     lugar_entrega: string | null;
-    mantenimiento_oferta: string | null;
     proxima_alerta: string | null;
   };
   items: QuoteDetailItem[];

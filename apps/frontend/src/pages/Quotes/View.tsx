@@ -219,10 +219,6 @@ export default function QuotesView() {
             <span className="label">Lugar de entrega</span>
             <input value={q.lugar_entrega || ""} disabled className="input" style={{ background: "var(--color-surface)" }} />
           </label>
-          <label className="field">
-            <span className="label">Mantenimiento de oferta</span>
-            <input value={q.mantenimiento_oferta || ""} disabled className="input" style={{ background: "var(--color-surface)" }} />
-          </label>
         </div>
 
         <div className="newActions">

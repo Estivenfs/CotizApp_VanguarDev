@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../components/common/Button";
 import * as clientService from "../../services/client.service";
 import type { Client } from "../../types";
@@ -27,10 +27,35 @@ const ReturnIcon = () => (
 );
 
 export function ClientCreate() {
+  const { id } = useParams();
+  const isEditMode = Boolean(id);
   const [draft, setDraft] = useState<ClientDraft>(emptyDraft);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!id) return;
+
+    async function loadClient() {
+      setLoading(true);
+      setError(null);
+      try {
+        const client = await clientService.getClient(Number(id));
+        const { id: _id, ...rest } = client;
+        setDraft({
+          ...emptyDraft,
+          ...rest
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al cargar cliente");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadClient();
+  }, [id]);
 
   async function onSave() {
     setError(null);
@@ -42,10 +67,17 @@ export function ClientCreate() {
 
     setLoading(true);
     try {
-      await clientService.createClient({
+      const payload = {
         ...draft,
         nombre_empresa: nombre
-      });
+      };
+
+      if (isEditMode && id) {
+        await clientService.updateClient(Number(id), payload);
+      } else {
+        await clientService.createClient(payload);
+      }
+
       navigate("/clients");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al guardar");
@@ -62,7 +94,7 @@ export function ClientCreate() {
           <div className="pageSubtitle" style={{ marginTop: 8 }}>
             <Link to="/clients" style={{ textDecoration: "none", color: "inherit", opacity: 0.8 }}>Clientes</Link> 
             <span style={{ margin: "0 6px", opacity: 0.5 }}>›</span> 
-            <span style={{ fontWeight: 600 }}>Agregar nuevo cliente</span>
+            <span style={{ fontWeight: 600 }}>{isEditMode ? "Editar cliente" : "Agregar nuevo cliente"}</span>
           </div>
         </div>
         <div className="actions">
@@ -73,7 +105,9 @@ export function ClientCreate() {
       </div>
 
       <div className="stack maxw-820" style={{ maxWidth: 840 }}>
-        <h2 style={{ fontSize: 18, fontWeight: 600, margin: "10px 0 20px" }}>Nuevo cliente</h2>
+        <h2 style={{ fontSize: 18, fontWeight: 600, margin: "10px 0 20px" }}>
+          {isEditMode ? "Editar cliente" : "Nuevo cliente"}
+        </h2>
         
         <div className="formGrid formGrid--2" style={{ gap: 24 }}>
           <label className="field">
@@ -173,7 +207,7 @@ export function ClientCreate() {
           
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "flex-end" }}>
             <Button disabled={loading} onClick={() => void onSave()} style={{ background: "var(--primary)", color: "var(--primary-text)", width: "100%", maxWidth: 200, border: "none" }}>
-              Guardar
+              {isEditMode ? "Guardar cambios" : "Guardar"}
             </Button>
           </div>
         </div>
