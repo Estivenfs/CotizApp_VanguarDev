@@ -34,6 +34,10 @@ export function QuotesIcon({ size = 20, color = "currentColor" }: IconProps) {
   return <FileText size={size} color={color} strokeWidth={2} />;
 }
 
+export function NoteIcon({ size = 20, color = "currentColor" }: IconProps) {
+  return <FileText size={size} color={color} strokeWidth={2} />;
+}
+
 export function ClientsIcon({ size = 20, color = "currentColor" }: IconProps) {
   return <Users size={size} color={color} strokeWidth={2} />;
 }

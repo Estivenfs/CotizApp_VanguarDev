@@ -36,6 +36,10 @@ export default function QuotesList() {
   const [alertModalQuote, setAlertModalQuote] = useState<quoteService.QuoteListItem | null>(null);
   const [newAlertDate, setNewAlertDate] = useState("");
 
+  const [noteModalQuote, setNoteModalQuote] = useState<quoteService.QuoteListItem | null>(null);
+  const [noteText, setNoteText] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+
   function toIsoStartOfDay(dateStr: string) {
     if (!dateStr) return null;
     const [y, m, d] = dateStr.split("-").map((x) => Number(x));
@@ -159,6 +163,25 @@ export default function QuotesList() {
     }
   }
 
+  async function handleAddNote() {
+    if (!noteModalQuote) return;
+    const nota = noteText.trim();
+    if (!nota) return;
+    setNoteSaving(true);
+    try {
+      const noteKey =
+        typeof crypto !== "undefined" && "randomUUID" in crypto ? (crypto as any).randomUUID() : String(Date.now());
+      await quoteService.addQuoteTrackingNote(noteModalQuote.id, { nota, metadata: { noteKey } });
+      setNoteModalQuote(null);
+      setNoteText("");
+      showToast({ type: "success", text: "Nota agregada correctamente" });
+    } catch (err) {
+      setError(getErrorMessage(err, {}, "No se pudo agregar la nota"));
+    } finally {
+      setNoteSaving(false);
+    }
+  }
+
   return (
     <div className="page">
       <div className="stack">
@@ -257,6 +280,13 @@ export default function QuotesList() {
                             onClick: () => navigate(`/quotes/${r.id}`)
                           },
                           {
+                            label: "Agregar Nota",
+                            onClick: () => {
+                              setNoteText("");
+                              setNoteModalQuote(r);
+                            }
+                          },
+                          {
                             label: "Cambiar Estado",
                             onClick: () => {
                               setNewStatus(r.estado);
@@ -335,6 +365,29 @@ export default function QuotesList() {
             <div style={{ display: "flex", gap: 12, marginTop: 24, justifyContent: "flex-end" }}>
               <Button onClick={() => setAlertModalQuote(null)} className="btn--ghost">Cancelar</Button>
               <Button onClick={handleUpdateAlert} className="btn--primary">Guardar</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {noteModalQuote && (
+        <div className="modalOverlay" onClick={() => (noteSaving ? null : setNoteModalQuote(null))}>
+          <div className="modalContent" onClick={(e) => e.stopPropagation()}>
+            <h3>Agregar Nota</h3>
+            <p>Cotización #{noteModalQuote.id}</p>
+            <div style={{ marginTop: 16 }}>
+              <textarea
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                className="textarea"
+                placeholder="Escribe una nota..."
+              />
+            </div>
+            <div style={{ display: "flex", gap: 12, marginTop: 24, justifyContent: "flex-end" }}>
+              <Button onClick={() => setNoteModalQuote(null)} disabled={noteSaving} className="btn--ghost">Cancelar</Button>
+              <Button onClick={handleAddNote} disabled={noteSaving || !noteText.trim()} className="btn--primary">
+                {noteSaving ? "Guardando..." : "Guardar"}
+              </Button>
             </div>
           </div>
         </div>

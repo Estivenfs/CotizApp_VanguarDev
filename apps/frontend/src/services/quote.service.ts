@@ -127,3 +127,40 @@ export async function updateQuote(id: number, data: { estado?: string; proxima_a
     body: data
   });
 }
+
+export type QuoteTrackingEvent = {
+  id: number;
+  id_cotizacion: number;
+  id_usuario: number | null;
+  fecha_accion: string;
+  tipo_accion: string;
+  observaciones: string | null;
+  fecha_reactivacion_programada: string | null;
+  metadata: unknown;
+  usuario_nombre: string | null;
+  usuario_email: string | null;
+};
+
+export async function listQuoteTracking(id: number) {
+  const result = await apiRequest<{ ok: true; items: QuoteTrackingEvent[] }>({ path: `/api/quotes/${id}/tracking` });
+  return result.items;
+}
+
+export async function addQuoteTrackingEvent(
+  id: number,
+  input: { tipo_accion: string; observaciones?: string | null; metadata?: unknown }
+) {
+  return apiRequest<{ ok: true; id: number }>({
+    path: `/api/quotes/${id}/tracking`,
+    method: "POST",
+    body: {
+      tipo_accion: input.tipo_accion,
+      observaciones: input.observaciones ?? null,
+      metadata: input.metadata ?? {}
+    }
+  });
+}
+
+export async function addQuoteTrackingNote(id: number, input: { nota: string; metadata?: unknown }) {
+  return addQuoteTrackingEvent(id, { tipo_accion: "NOTA", observaciones: input.nota, metadata: input.metadata });
+}

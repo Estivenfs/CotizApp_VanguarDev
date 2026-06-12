@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "../../components/common/Button";
+import { NoteIcon } from "../../components/common/Icons";
 import { useToast } from "../../context/ToastContext";
 import * as quoteService from "../../services/quote.service";
 import { getErrorMessage } from "../../utils/feedback";
@@ -12,19 +13,55 @@ function formatDate(iso: string | null) {
   return Number.isFinite(d.getTime()) ? d.toLocaleDateString("es-AR") : iso;
 }
 
+function formatDateTime(iso: string | null) {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  return Number.isFinite(d.getTime()) ? d.toLocaleString("es-AR") : iso;
+}
+
+function extractEstadoChange(metadata: unknown): { from: string; to: string } | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const m = metadata as Record<string, unknown>;
+  const from = typeof m.from === "string" ? m.from : null;
+  const to = typeof m.to === "string" ? m.to : null;
+  return from && to ? { from, to } : null;
+}
+
+function extractCreationEstado(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const m = metadata as Record<string, unknown>;
+  return typeof m.estado === "string" ? m.estado : null;
+}
+
+function extractNoteKey(metadata: unknown, fallbackId: number) {
+  if (metadata && typeof metadata === "object") {
+    const m = metadata as Record<string, unknown>;
+    if (typeof m.noteKey === "string" && m.noteKey.trim()) return m.noteKey.trim();
+  }
+  return String(fallbackId);
+}
+
 export default function QuotesView() {
   const { id } = useParams();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [trackingLoading, setTrackingLoading] = useState(false);
+  const [trackingSaving, setTrackingSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { showToast } = useToast();
 
   const [data, setData] = useState<quoteService.QuoteDetailResult | null>(null);
+  const [tracking, setTracking] = useState<quoteService.QuoteTrackingEvent[]>([]);
 
   const [estado, setEstado] = useState("");
   const [proximaAlerta, setProximaAlerta] = useState("");
+
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [noteModalValue, setNoteModalValue] = useState("");
+  const [editingNoteKey, setEditingNoteKey] = useState<string | null>(null);
+  const [editingFrom, setEditingFrom] = useState<string | null>(null);
 
   async function loadData() {
     if (!id) return;
@@ -42,8 +79,22 @@ export default function QuotesView() {
     }
   }
 
+  async function loadTracking() {
+    if (!id) return;
+    setTrackingLoading(true);
+    try {
+      const items = await quoteService.listQuoteTracking(Number(id));
+      setTracking(items);
+    } catch (err) {
+      showToast({ type: "error", text: getErrorMessage(err, {}, "No se pudo cargar el historial") });
+    } finally {
+      setTrackingLoading(false);
+    }
+  }
+
   useEffect(() => {
     void loadData();
+    void loadTracking();
   }, [id]);
 
   async function saveChanges() {
@@ -56,11 +107,93 @@ export default function QuotesView() {
         proxima_alerta: proximaAlerta ? `${proximaAlerta}T00:00:00.000Z` : null
       });
       showToast({ type: "success", text: "Cotización actualizada correctamente" });
-      void loadData(); // reload
+      void loadData();
+      void loadTracking();
     } catch (err) {
       setError(getErrorMessage(err, {}, "No se pudo guardar la cotización"));
     } finally {
       setSaving(false);
+    }
+  }
+
+  const notes = useMemo(() => {
+    const editedKeys = new Set<string>();
+    for (const ev of tracking) {
+      if (ev.tipo_accion === "NOTA_EDITADA") {
+        editedKeys.add(extractNoteKey(ev.metadata, ev.id));
+      }
+    }
+
+    const latestByKey = new Map<
+      string,
+      { noteKey: string; text: string; updatedAtIso: string; who: string; edited: boolean }
+    >();
+    for (const ev of tracking) {
+      if (ev.tipo_accion !== "NOTA" && ev.tipo_accion !== "NOTA_EDITADA") continue;
+      if (!ev.observaciones) continue;
+      const noteKey = extractNoteKey(ev.metadata, ev.id);
+      if (latestByKey.has(noteKey)) continue;
+      const who = ev.usuario_nombre || ev.usuario_email || (ev.id_usuario ? "Usuario" : "Sistema");
+      latestByKey.set(noteKey, {
+        noteKey,
+        text: ev.observaciones,
+        updatedAtIso: ev.fecha_accion,
+        who,
+        edited: editedKeys.has(noteKey)
+      });
+    }
+
+    const arr = Array.from(latestByKey.values());
+    arr.sort((a, b) => new Date(b.updatedAtIso).getTime() - new Date(a.updatedAtIso).getTime());
+    return arr;
+  }, [tracking]);
+
+  function openNewNoteModal() {
+    setEditingNoteKey(null);
+    setEditingFrom(null);
+    setNoteModalValue("");
+    setNoteModalOpen(true);
+  }
+
+  function openEditNoteModal(noteKey: string, currentText: string) {
+    setEditingNoteKey(noteKey);
+    setEditingFrom(currentText);
+    setNoteModalValue(currentText);
+    setNoteModalOpen(true);
+  }
+
+  function closeNoteModal() {
+    setNoteModalOpen(false);
+    setNoteModalValue("");
+    setEditingNoteKey(null);
+    setEditingFrom(null);
+  }
+
+  async function saveNoteFromModal() {
+    if (!id) return;
+    const text = noteModalValue.trim();
+    if (!text) return;
+    setTrackingSaving(true);
+    try {
+      if (editingNoteKey) {
+        await quoteService.addQuoteTrackingEvent(Number(id), {
+          tipo_accion: "NOTA_EDITADA",
+          observaciones: text,
+          metadata: { noteKey: editingNoteKey, from: editingFrom, to: text }
+        });
+        showToast({ type: "success", text: "Nota modificada correctamente" });
+      } else {
+        const noteKey =
+          typeof crypto !== "undefined" && "randomUUID" in crypto ? (crypto as any).randomUUID() : String(Date.now());
+        await quoteService.addQuoteTrackingNote(Number(id), { nota: text, metadata: { noteKey } });
+        showToast({ type: "success", text: "Nota agregada correctamente" });
+      }
+      closeNoteModal();
+      void loadTracking();
+    } catch (err) {
+      showToast({ type: "error", text: getErrorMessage(err, {}, "No se pudo guardar la nota") });
+    } finally {
+      setTrackingSaving(false);
     }
   }
 
@@ -89,9 +222,21 @@ export default function QuotesView() {
             <h1 className="pageTitle">Cotización #{q.id}</h1>
             <div className="pageSubtitle">Cotizaciones &gt; Ver cotización</div>
           </div>
-          <Button onClick={() => navigate("/quotes")} disabled={saving} className="btn--ghost">
-            Volver
-          </Button>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <Button
+              type="button"
+              onClick={openNewNoteModal}
+              disabled={trackingSaving}
+              className="btn--icon btn--ghost"
+              title="Agregar nota"
+              aria-label="Agregar nota"
+            >
+              <NoteIcon />
+            </Button>
+            <Button onClick={() => navigate("/quotes")} disabled={saving} className="btn--ghost">
+              Volver
+            </Button>
+          </div>
         </div>
 
         {error ? <div className="error">{error}</div> : null}
@@ -222,12 +367,108 @@ export default function QuotesView() {
           </label>
         </div>
 
+        <div className="sectionTitle" style={{ marginTop: 32 }}>Notas</div>
+        <div className="divider" />
+
+        {notes.length === 0 ? (
+          <div className="hint">Todavía no hay notas.</div>
+        ) : (
+          <div className="stack">
+            {notes.map((n) => (
+              <div key={n.noteKey} className="card" style={{ padding: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
+                  <div style={{ fontWeight: 700 }}>
+                    Nota{n.edited ? " (editada)" : ""}
+                  </div>
+                  <div className="hint">{formatDateTime(n.updatedAtIso)}</div>
+                </div>
+                <div className="hint" style={{ marginTop: 4 }}>Por: {n.who}</div>
+                <div style={{ marginTop: 10, whiteSpace: "pre-wrap" }}>{n.text}</div>
+                <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end" }}>
+                  <Button onClick={() => openEditNoteModal(n.noteKey, n.text)} disabled={trackingSaving} className="btn--ghost">
+                    Editar
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="sectionTitle" style={{ marginTop: 32 }}>Historial</div>
+        <div className="divider" />
+
+        {trackingLoading ? (
+          <div className="hint" style={{ marginTop: 10 }}>Cargando historial...</div>
+        ) : tracking.length === 0 ? (
+          <div className="hint" style={{ marginTop: 10 }}>Todavía no hay eventos en el historial.</div>
+        ) : (
+          <div className="stack" style={{ marginTop: 10 }}>
+            {tracking.map((ev) => {
+              const who = ev.usuario_nombre || ev.usuario_email || (ev.id_usuario ? "Usuario" : "Sistema");
+              const title =
+                ev.tipo_accion === "NOTA"
+                  ? "Nota"
+                  : ev.tipo_accion === "NOTA_EDITADA"
+                    ? "Edición de nota"
+                  : ev.tipo_accion === "CAMBIO_ESTADO"
+                    ? "Cambio de estado"
+                    : ev.tipo_accion === "CREACION"
+                      ? "Creación"
+                      : ev.tipo_accion;
+              const estadoChange = ev.tipo_accion === "CAMBIO_ESTADO" ? extractEstadoChange(ev.metadata) : null;
+              const createdEstado = ev.tipo_accion === "CREACION" ? extractCreationEstado(ev.metadata) : null;
+
+              return (
+                <div key={ev.id} className="card" style={{ padding: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
+                    <div style={{ fontWeight: 700 }}>{title}</div>
+                    <div className="hint">{formatDateTime(ev.fecha_accion)}</div>
+                  </div>
+                  <div className="hint" style={{ marginTop: 4 }}>Por: {who}</div>
+                  {estadoChange ? (
+                    <div style={{ marginTop: 10 }}>Estado: {estadoChange.from} → {estadoChange.to}</div>
+                  ) : null}
+                  {ev.tipo_accion === "CREACION" ? (
+                    <div style={{ marginTop: 10 }}>Cotización creada{createdEstado ? ` (estado: ${createdEstado})` : ""}</div>
+                  ) : null}
+                  {ev.observaciones ? (
+                    <div style={{ marginTop: 10, whiteSpace: "pre-wrap" }}>{ev.observaciones}</div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <div className="newActions">
           <Button disabled={saving || (estado === q.estado && proximaAlerta === (q.proxima_alerta ? q.proxima_alerta.split("T")[0] : ""))} onClick={saveChanges} className="btn--primary minw-170">
             {saving ? "Guardando..." : "Guardar cambios"}
           </Button>
         </div>
       </div>
+
+      {noteModalOpen ? (
+        <div className="modalOverlay" onClick={() => (trackingSaving ? null : closeNoteModal())}>
+          <div className="modalContent" onClick={(e) => e.stopPropagation()}>
+            <h3>{editingNoteKey ? "Editar nota" : "Agregar nota"}</h3>
+            <p>Cotización #{q.id}</p>
+            <div style={{ marginTop: 16 }}>
+              <textarea
+                value={noteModalValue}
+                onChange={(e) => setNoteModalValue(e.target.value)}
+                className="textarea"
+                placeholder="Escribe una nota..."
+              />
+            </div>
+            <div style={{ display: "flex", gap: 12, marginTop: 24, justifyContent: "flex-end" }}>
+              <Button onClick={closeNoteModal} disabled={trackingSaving} className="btn--ghost">Cancelar</Button>
+              <Button onClick={saveNoteFromModal} disabled={trackingSaving || !noteModalValue.trim()} className="btn--primary">
+                {trackingSaving ? "Guardando..." : "Guardar"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -42,6 +42,19 @@ export type QuoteListRow = {
   proxima_alerta: string | null;
 };
 
+export type QuoteTrackingRow = {
+  id: string | number;
+  id_cotizacion: string | number;
+  id_usuario: string | number | null;
+  fecha_accion: string;
+  tipo_accion: string;
+  observaciones: string | null;
+  fecha_reactivacion_programada: string | null;
+  metadata: unknown;
+  usuario_nombre: string | null;
+  usuario_email: string | null;
+};
+
 export async function listQuotes(input?: {
   companyId?: number | null;
   q?: string;
@@ -152,6 +165,70 @@ export async function listQuoteItems(quoteId: number, companyId?: number | null)
     values
   );
   return result.rows;
+}
+
+export async function listQuoteTrackingEvents(quoteId: number, companyId?: number | null) {
+  const values: unknown[] = [quoteId];
+  const companyJoin =
+    companyId !== undefined && companyId !== null
+      ? (() => {
+          values.push(companyId);
+          return `join cotizaciones c on c.id = s.id_cotizacion and c.id_empresa = $${values.length}`;
+        })()
+      : "join cotizaciones c on c.id = s.id_cotizacion";
+
+  const result = await pool.query<QuoteTrackingRow>(
+    `
+      select
+        s.id,
+        s.id_cotizacion,
+        s.id_usuario,
+        s.fecha_accion,
+        s.tipo_accion,
+        s.observaciones,
+        s.fecha_reactivacion_programada,
+        s.metadata,
+        u.nombre as usuario_nombre,
+        u.email as usuario_email
+      from seguimiento s
+      ${companyJoin}
+      left join usuarios u on u.id = s.id_usuario
+      where s.id_cotizacion = $1
+      order by s.fecha_accion desc, s.id desc
+    `,
+    values
+  );
+  return result.rows;
+}
+
+export async function addQuoteTrackingEvent(input: {
+  quoteId: number;
+  userId: number | null;
+  actionType: string;
+  actionAtIso?: string | null;
+  note: string | null;
+  scheduledAtIso?: string | null;
+  metadata?: unknown;
+}) {
+  const result = await pool.query<{ id: string | number }>(
+    `
+      insert into seguimiento
+        (id_cotizacion, id_usuario, fecha_accion, tipo_accion, observaciones, fecha_reactivacion_programada, metadata)
+      values
+        ($1, $2, coalesce($3::timestamptz, now()), $4, $5, $6, $7::jsonb)
+      returning id
+    `,
+    [
+      input.quoteId,
+      input.userId,
+      input.actionAtIso ?? null,
+      input.actionType,
+      input.note,
+      input.scheduledAtIso ?? null,
+      JSON.stringify(input.metadata ?? {})
+    ]
+  );
+  return Number(result.rows[0]?.id);
 }
 
 export type CreateQuoteInput = {

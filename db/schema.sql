@@ -73,10 +73,12 @@ CREATE TABLE IF NOT EXISTS items_cotizacion (
 CREATE TABLE IF NOT EXISTS seguimiento (
   id BIGSERIAL PRIMARY KEY,
   id_cotizacion BIGINT NOT NULL REFERENCES cotizaciones(id) ON DELETE CASCADE,
-  fecha_accion TIMESTAMPTZ NOT NULL,
+  id_usuario BIGINT REFERENCES usuarios(id),
+  fecha_accion TIMESTAMPTZ NOT NULL DEFAULT now(),
   tipo_accion TEXT NOT NULL,
   observaciones TEXT,
-  fecha_reactivacion_programada TIMESTAMPTZ
+  fecha_reactivacion_programada TIMESTAMPTZ,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 
 CREATE TABLE IF NOT EXISTS configuraciones (
@@ -131,6 +133,10 @@ ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS descuento_porcentaje_global NU
 
 ALTER TABLE items_cotizacion ADD COLUMN IF NOT EXISTS iva_porcentaje NUMERIC(5, 2) NOT NULL DEFAULT 21;
 ALTER TABLE items_cotizacion DROP COLUMN IF EXISTS descuento_porcentaje;
+
+ALTER TABLE seguimiento ADD COLUMN IF NOT EXISTS id_usuario BIGINT REFERENCES usuarios(id);
+ALTER TABLE seguimiento ALTER COLUMN fecha_accion SET DEFAULT now();
+ALTER TABLE seguimiento ADD COLUMN IF NOT EXISTS metadata JSONB NOT NULL DEFAULT '{}'::jsonb;
 
 ALTER TABLE configuraciones ADD COLUMN IF NOT EXISTS id BIGSERIAL;
 ALTER TABLE configuraciones ADD COLUMN IF NOT EXISTS id_empresa BIGINT REFERENCES empresas(id) ON DELETE CASCADE;
@@ -225,6 +231,7 @@ CREATE INDEX IF NOT EXISTS idx_cotizaciones_id_empresa ON cotizaciones(id_empres
 CREATE INDEX IF NOT EXISTS idx_catalog_options_empresa_tipo_activo
   ON empresa_catalog_options (id_empresa, tipo, activo);
 CREATE INDEX IF NOT EXISTS idx_cotizaciones_id_cliente ON cotizaciones(id_cliente);
+CREATE INDEX IF NOT EXISTS idx_seguimiento_cotizacion_fecha ON seguimiento(id_cotizacion, fecha_accion);
 CREATE INDEX IF NOT EXISTS idx_cotizaciones_id_usuario ON cotizaciones(id_usuario);
 CREATE INDEX IF NOT EXISTS idx_items_cotizacion_id_cotizacion ON items_cotizacion(id_cotizacion);
 CREATE INDEX IF NOT EXISTS idx_items_cotizacion_id_producto ON items_cotizacion(id_producto);

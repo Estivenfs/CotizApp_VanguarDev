@@ -3,6 +3,7 @@ import { getActiveCatalogOptionByValue } from "../models/config.model.js";
 import { getClientById } from "../models/client.model.js";
 import { getProductById } from "../models/product.model.js";
 import {
+  addQuoteTrackingEvent,
   createQuoteTransactional,
   getQuoteById,
   listQuoteItems,
@@ -224,6 +225,15 @@ export async function createQuoteHandler(req: Request, res: Response) {
     items: itemsToInsert
   });
 
+  await addQuoteTrackingEvent({
+    quoteId,
+    userId: req.user.id,
+    actionType: "CREACION",
+    actionAtIso: new Date().toISOString(),
+    note: null,
+    metadata: { estado }
+  });
+
   if (returnPdf) {
     const pdf = await generateQuotePdfBuffer(quoteId);
     res.status(201);
@@ -301,6 +311,13 @@ export async function updateQuoteHandler(req: Request, res: Response) {
     return;
   }
 
+  const companyId = getScopedCompanyId(req);
+  const current = await getQuoteById(id, companyId);
+  if (!current) {
+    res.status(404).json({ ok: false, error: "not_found" });
+    return;
+  }
+
   const data: { estado?: string; proxima_alerta?: string | null } = {};
 
   if (req.body?.estado) {
@@ -314,10 +331,21 @@ export async function updateQuoteHandler(req: Request, res: Response) {
     data.proxima_alerta = req.body.proxima_alerta ? parseIsoDateOrNull(req.body.proxima_alerta) : null;
   }
 
-  const success = await updateQuote(id, data, getScopedCompanyId(req));
+  const success = await updateQuote(id, data, companyId);
   if (!success) {
     res.status(404).json({ ok: false, error: "not_found_or_no_changes" });
     return;
+  }
+
+  if (data.estado !== undefined && data.estado !== current.estado) {
+    await addQuoteTrackingEvent({
+      quoteId: id,
+      userId: req.user?.id ?? null,
+      actionType: "CAMBIO_ESTADO",
+      actionAtIso: new Date().toISOString(),
+      note: null,
+      metadata: { from: current.estado, to: data.estado }
+    });
   }
 
   res.json({ ok: true });
