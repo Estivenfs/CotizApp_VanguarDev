@@ -1,3 +1,4 @@
+import type { PoolClient } from "pg";
 import { pool } from "../config/database.js";
 
 export type ConfigRow = {
@@ -18,6 +19,18 @@ export type CatalogOptionRow = {
   created_at: string;
   updated_at: string;
 };
+
+type Queryable = Pick<PoolClient, "query">;
+
+export const DEFAULT_CATALOG_OPTIONS: ReadonlyArray<{
+  tipo: CatalogOptionType;
+  label: string;
+  value: string;
+}> = [
+  { tipo: "forma_pago", label: "Efectivo", value: "efectivo" },
+  { tipo: "lugar_entrega", label: "Deposito", value: "deposito" },
+  { tipo: "tipo_iva", label: "21%", value: "21" }
+];
 
 export async function getConfig(clave: string, companyId: number) {
   const result = await pool.query<ConfigRow>(
@@ -114,6 +127,23 @@ export async function createCatalogOption(input: {
     [input.companyId, input.tipo, input.label, input.value]
   );
   return result.rows[0];
+}
+
+export async function ensureDefaultCatalogOptions(companyId: number, db: Queryable = pool) {
+  for (const option of DEFAULT_CATALOG_OPTIONS) {
+    await db.query(
+      `
+        insert into empresa_catalog_options (id_empresa, tipo, label, value, activo)
+        values ($1, $2, $3, $4, true)
+        on conflict (id_empresa, tipo, label)
+        do update set
+          value = excluded.value,
+          activo = true,
+          updated_at = now()
+      `,
+      [companyId, option.tipo, option.label, option.value]
+    );
+  }
 }
 
 export async function updateCatalogOption(

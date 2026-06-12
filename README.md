@@ -79,6 +79,21 @@ Ejecutar:
 npm run seed:admin -w @cotizapp/backend
 ```
 
+## Init de catálogos por defecto
+
+Crea o reactiva, para cada empresa activa existente, las siguientes opciones base:
+- Forma de pago: `Efectivo`
+- Lugar de entrega: `Deposito`
+- Tipo de IVA: `21%`
+
+El script es idempotente: si ya existen, las deja activas y actualiza su valor.
+
+Ejecutar:
+
+```bash
+npm run init -w @cotizapp/backend
+```
+
 ## Iniciar la aplicación
 
 ### Backend
@@ -98,6 +113,19 @@ npm run dev:frontend
 ```
 
 Por defecto Vite usa el puerto `5173`. Si está ocupado, Vite puede levantar en otro puerto (ej: `5174`); en ese caso actualizá `FRONTEND_ORIGIN` en el `.env` del backend para que coincida con el `Origin` del navegador.
+
+## Flujo recomendado desde cero
+
+Desde la raíz del repo:
+
+```bash
+npm install
+npm run migrate -w @cotizapp/backend
+npm run seed:admin -w @cotizapp/backend
+npm run init -w @cotizapp/backend
+npm run dev:backend
+npm run dev:frontend
+```
 
 ## Problemas comunes
 

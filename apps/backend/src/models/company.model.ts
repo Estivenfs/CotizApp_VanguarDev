@@ -1,4 +1,5 @@
 import { pool } from "../config/database.js";
+import { ensureDefaultCatalogOptions } from "./config.model.js";
 
 export type CompanyRow = {
   id: string | number;
@@ -35,15 +36,27 @@ export async function getCompanyById(id: number) {
 }
 
 export async function createCompany(input: { nombre: string; activo?: boolean }) {
-  const result = await pool.query<CompanyRow>(
-    `
-      insert into empresas (nombre, activo)
-      values ($1, $2)
-      returning id, nombre, activo, created_at, updated_at
-    `,
-    [input.nombre, input.activo ?? true]
-  );
-  return result.rows[0];
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const result = await client.query<CompanyRow>(
+      `
+        insert into empresas (nombre, activo)
+        values ($1, $2)
+        returning id, nombre, activo, created_at, updated_at
+      `,
+      [input.nombre, input.activo ?? true]
+    );
+    const item = result.rows[0];
+    await ensureDefaultCatalogOptions(Number(item.id), client);
+    await client.query("commit");
+    return item;
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function updateCompany(
