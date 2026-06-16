@@ -69,6 +69,10 @@ export async function createClientHandler(req: Request, res: Response) {
 
   const contacto_principal = toNullableString(req.body?.contacto_principal);
   const cuit_tax_id = toNullableString(req.body?.cuit_tax_id);
+  if (!cuit_tax_id) {
+    res.status(400).json({ ok: false, error: "cuit_tax_id_required" });
+    return;
+  }
   const clasificacion = toNullableString(req.body?.clasificacion);
   const email = toNullableString(req.body?.email);
   const telefono = toNullableString(req.body?.telefono);
@@ -133,6 +137,10 @@ export async function updateClientHandler(req: Request, res: Response) {
 
   const contacto_principal = toNullableString(req.body?.contacto_principal);
   const cuit_tax_id = toNullableString(req.body?.cuit_tax_id);
+  if (!cuit_tax_id) {
+    res.status(400).json({ ok: false, error: "cuit_tax_id_required" });
+    return;
+  }
   const clasificacion = toNullableString(req.body?.clasificacion);
   const email = toNullableString(req.body?.email);
   const telefono = toNullableString(req.body?.telefono);

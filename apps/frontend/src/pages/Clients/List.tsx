@@ -49,7 +49,8 @@ export function ClientsList() {
 
   const errorMessages: Record<string, string> = {
     duplicate_nombre_empresa: "Ya existe un cliente con esa razón social en esta empresa.",
-    duplicate_cuit_tax_id: "Ya existe un cliente con ese CUIT en esta empresa.",
+    duplicate_cuit_tax_id: "Ya existe un cliente con ese CUIT / CUIL en esta empresa.",
+    cuit_tax_id_required: "El CUIT / CUIL es obligatorio.",
     email_invalido: "Ingresá un email válido.",
     estado_invalido: "El estado seleccionado no es válido."
   };

@@ -24,9 +24,10 @@ const emptyDraft: ClientDraft = {
 
 const clientErrorMessages: Record<string, string> = {
   nombre_empresa_required: "La razón social es obligatoria.",
+  cuit_tax_id_required: "El CUIT / CUIL es obligatorio.",
   email_invalido: "Ingresá un email válido.",
   duplicate_nombre_empresa: "Ya existe un cliente con esa razón social en esta empresa.",
-  duplicate_cuit_tax_id: "Ya existe un cliente con ese CUIT en esta empresa.",
+  duplicate_cuit_tax_id: "Ya existe un cliente con ese CUIT / CUIL en esta empresa.",
   estado_invalido: "El estado seleccionado no es válido."
 };
 
@@ -49,6 +50,11 @@ export function ClientCreate() {
     const nombre = draft.nombre_empresa?.trim();
     if (!nombre) {
       return "El nombre / razón social es obligatorio";
+    }
+
+    const cuit = draft.cuit_tax_id?.trim();
+    if (!cuit) {
+      return "El CUIT / CUIL es obligatorio";
     }
 
     if (draft.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email.trim())) {
@@ -145,7 +151,7 @@ export function ClientCreate() {
             />
           </label>
           <label className="field">
-            <span className="label">CUIT</span>
+            <span className="label">CUIT / CUIL</span>
             <input
               value={draft.cuit_tax_id ?? ""}
               onChange={(e) => setDraft((d) => ({ ...d, cuit_tax_id: e.target.value }))}
