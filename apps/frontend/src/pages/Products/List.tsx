@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { ActionMenu } from "../../components/common/ActionMenu";
 import { Button } from "../../components/common/Button";
@@ -137,7 +138,7 @@ export function ProductsList() {
             <Button className="btn--ghost">
               <span style={{ marginRight: 8 }}>↓</span> Exportar lista
             </Button>
-            <Button onClick={() => navigate("/products/new")} className="btn--primary">
+            <Button onClick={() => navigate("/products/new")} className="btn--gradient">
               + Nuevo producto
             </Button>
           </div>
@@ -156,13 +157,13 @@ export function ProductsList() {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
-          <Button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className="btn--ghost" style={{ display: "flex", gap: 8, background: showAdvancedFilters ? "rgba(198, 255, 51, 0.15)" : "transparent" }}>
+          <Button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className="btn--ghost" style={{ display: "flex", gap: 8 }}>
             <FilterIcon /> Filtros
           </Button>
         </div>
 
         {showAdvancedFilters && (
-          <div className="filterToolbar" style={{ padding: "16px", background: "rgba(198, 255, 51, 0.15)", border: "1px solid var(--border)", borderRadius: "12px", marginTop: "-8px", marginBottom: "24px" }}>
+          <div className="filterToolbar" style={{ padding: "16px", background: "transparent", border: "1px solid var(--border)", borderRadius: "12px", marginTop: "-8px", marginBottom: "24px" }}>
             <select value={estadoFilter} onChange={(e) => setEstadoFilter(e.target.value)} className="select" style={{ backgroundColor: "var(--surface)", flex: 1 }}>
               <option value="">Estado (todos)</option>
               <option value="activo">Activo</option>
@@ -263,28 +264,29 @@ export function ProductsList() {
         </table>
       </div>
 
-      {statusModalProduct ? (
+      {statusModalProduct ? createPortal(
         <div className="modalOverlay" onClick={() => setStatusModalProduct(null)}>
           <div className="modalContent" onClick={(event) => event.stopPropagation()}>
             <h3>Cambiar Estado</h3>
             <p>{statusModalProduct.nombre}</p>
             <div className="modalField">
               <select value={newStatus} onChange={(event) => setNewStatus(event.target.value)} className="select modalControl">
-                <option value="Activo">Activo</option>
-                <option value="Pausado">Pausado</option>
-                <option value="Desactivado">Desactivado</option>
+                <option value="activo">Activo</option>
+                <option value="pausado">Pausado</option>
+                <option value="discontinuado">Discontinuado</option>
               </select>
             </div>
             <div className="modalActions">
               <Button onClick={() => setStatusModalProduct(null)} className="btn--ghost">
                 Cancelar
               </Button>
-              <Button onClick={() => void handleUpdateStatus()} className="btn--primary">
+              <Button disabled={loading} onClick={() => void handleUpdateStatus()} className="btn--primary">
                 Guardar
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       ) : null}
     </div>
   );

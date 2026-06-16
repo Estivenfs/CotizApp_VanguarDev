@@ -67,8 +67,8 @@ a {
 }
 
 .btn--primary {
-  background: var(--primary);
-  border-color: var(--primary);
+  background: #8b4bf2;
+  border-color: #8b4bf2;
   color: var(--primary-text);
   font-weight: 600;
   transition: all 0.2s ease;
@@ -78,6 +78,22 @@ a {
   background: var(--primary-hover);
   border-color: var(--primary-hover);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.btn--gradient {
+  background: linear-gradient(125deg, #7d39eb 0%, #9a5cf5 30%, #642dbf 70%, #5a20b5 100%);
+  border-color: transparent;
+  color: #ffffff;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 8px 24px rgba(125, 57, 235, 0.4);
+}
+
+.btn--gradient:hover:not(:disabled) {
+  background: linear-gradient(125deg, #9a5cf5 0%, #7d39eb 40%, #5a20b5 100%);
+  border-color: transparent;
+  box-shadow: 0 12px 30px rgba(125, 57, 235, 0.55);
   transform: translateY(-1px);
 }
 

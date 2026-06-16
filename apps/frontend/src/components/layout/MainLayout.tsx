@@ -34,7 +34,7 @@ export function SideNav(props: { onLogout: () => void; userLabel: string; userMe
           { key: "quotes", label: "Cotizaciones", to: "/quotes", icon: QuotesIcon },
           { key: "clients", label: "Clientes", to: "/clients", icon: ClientsIcon },
           { key: "products", label: "Productos", to: "/products", icon: ProductsIcon },
-          { key: "metrics", label: "Métricas", icon: MetricsIcon }
+          { key: "metrics", label: "Métricas", to: "/metrics", icon: MetricsIcon }
         ];
 
   const itemsBottom: NavItem[] = [

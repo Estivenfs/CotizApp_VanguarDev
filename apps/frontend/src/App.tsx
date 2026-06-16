@@ -5,6 +5,7 @@ import ClientsPage from "./pages/Clients";
 import DashboardPage from "./pages/Dashboard";
 import LandingPage from "./pages/Landing";
 import LoginPage from "./pages/Login";
+import MetricsPage from "./pages/Metrics";
 import ProductsPage from "./pages/Products";
 import QuotesPage from "./pages/Quotes";
 import SettingsPage from "./pages/Settings";
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/clients/*" element={<ClientsPage />} />
         <Route path="/products/*" element={<ProductsPage />} />
         <Route path="/quotes/*" element={<QuotesPage />} />
+        <Route path="/metrics/*" element={<MetricsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/support" element={<SupportPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

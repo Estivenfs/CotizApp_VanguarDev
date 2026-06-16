@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link, useNavigate } from "react-router-dom";
 import { ActionMenu } from "../../components/common/ActionMenu";
 import { Button } from "../../components/common/Button";
@@ -176,7 +177,7 @@ export function ClientsList() {
           <Button className="btn--ghost">
             <span className="btnIconLead">↓</span> Exportar lista
           </Button>
-          <Button onClick={() => navigate("/clients/new")} className="btn--primary">
+          <Button onClick={() => navigate("/clients/new")} className="btn--gradient">
             + Nuevo cliente
           </Button>
         </div>
@@ -195,13 +196,13 @@ export function ClientsList() {
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />
-        <Button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className="btn--ghost" style={{ display: "flex", gap: 8, background: showAdvancedFilters ? "rgba(198, 255, 51, 0.15)" : "transparent" }}>
+        <Button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className="btn--ghost" style={{ display: "flex", gap: 8 }}>
           <FilterIcon /> Filtros
         </Button>
       </div>
 
       {showAdvancedFilters && (
-        <div className="filterToolbar" style={{ padding: "16px", background: "rgba(198, 255, 51, 0.15)", border: "1px solid var(--border)", borderRadius: "12px", marginTop: "-8px", marginBottom: "24px" }}>
+        <div className="filterToolbar" style={{ padding: "16px", background: "transparent", border: "1px solid var(--border)", borderRadius: "12px", marginTop: "-8px", marginBottom: "24px" }}>
           <select value={estadoFilter} onChange={(e) => setEstadoFilter(e.target.value)} className="select" style={{ backgroundColor: "var(--surface)", flex: 1 }}>
             <option value="">Estado (todos)</option>
             <option value="activo">Activo</option>
@@ -302,7 +303,7 @@ export function ClientsList() {
         </table>
       </div>
 
-      {statusModalClient ? (
+      {statusModalClient ? createPortal(
         <div className="modalOverlay" onClick={() => setStatusModalClient(null)}>
           <div className="modalContent" onClick={(event) => event.stopPropagation()}>
             <h3>Cambiar Estado</h3>
@@ -318,12 +319,13 @@ export function ClientsList() {
               <Button onClick={() => setStatusModalClient(null)} className="btn--ghost">
                 Cancelar
               </Button>
-              <Button onClick={() => void handleUpdateStatus()} className="btn--primary">
+              <Button disabled={loading} onClick={() => void handleUpdateStatus()} className="btn--primary">
                 Guardar
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       ) : null}
 
       {contactModalClient ? (

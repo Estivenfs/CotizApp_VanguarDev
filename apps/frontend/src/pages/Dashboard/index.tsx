@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { FilePlus, UserPlus, PackagePlus, AlarmClock, MessageSquare, Send, Users, CheckCircle, Search } from "lucide-react";
 import { Button } from "../../components/common/Button";
@@ -250,36 +251,38 @@ export default function DashboardPage() {
       </div>
       </div>
 
-      {statusModalQuote ? (
+      {statusModalQuote ? createPortal(
         <div className="modalOverlay" onClick={() => setStatusModalQuote(null)}>
           <div className="modalContent" onClick={(e) => e.stopPropagation()}>
-            <h3>Gestionar reactivación</h3>
+            <h3>Actualizar Estado</h3>
             <p>Cotización #{statusModalQuote.id}</p>
-            <div style={{ marginTop: 16 }}>
-              <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className="select" style={{ width: "100%" }}>
-                <option value="BORRADOR">Borrador</option>
+            <div className="modalField">
+              <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className="select modalControl">
                 <option value="EMITIDA">Emitida</option>
                 <option value="ENVIADA">Enviada</option>
                 <option value="POSPUESTA">Pospuesta</option>
-                <option value="PEND_REACTIVACION">Pend. reactivación</option>
-                <option value="CERRADA_PERDIDA">Cerrada perdida</option>
                 <option value="CERRADA_GANADA">Cerrada ganada</option>
+                <option value="CERRADA_PERDIDA">Cerrada perdida</option>
+                <option value="VENCIDA">Vencida</option>
               </select>
-              {newStatus === "POSPUESTA" ? (
-                <div style={{ marginTop: 12 }}>
-                  <input type="date" value={newAlertDate} onChange={(e) => setNewAlertDate(e.target.value)} className="input" style={{ width: "100%" }} />
-                  <div className="hint" style={{ marginTop: 6 }}>
-                    Debés indicar una nueva fecha de reactivación futura.
-                  </div>
-                </div>
-              ) : null}
             </div>
-            <div style={{ display: "flex", gap: 12, marginTop: 24, justifyContent: "flex-end" }}>
+            <div className="modalField">
+              <textarea
+                className="textarea modalControl"
+                placeholder="Nota de seguimiento (opcional)..."
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+              />
+            </div>
+            <div className="modalActions">
               <Button onClick={() => setStatusModalQuote(null)} className="btn--ghost">Cancelar</Button>
-              <Button onClick={handleUpdateStatus} className="btn--primary">Guardar</Button>
+              <Button disabled={loading} onClick={() => void handleUpdateQuoteStatus()} className="btn--primary">
+                Guardar
+              </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       ) : null}
     </div>
   );

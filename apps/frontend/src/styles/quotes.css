@@ -150,30 +150,47 @@
   right: 0;
   bottom: 0;
   padding: 24px;
-  background: rgba(15, 23, 42, 0.28);
-  backdrop-filter: blur(2px);
+  background: rgba(13, 8, 20, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1100;
+  animation: modalFadeIn 0.2s ease-out;
 }
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .modalContent {
   background: var(--surface);
   color: inherit;
-  padding: 24px;
-  border-radius: 18px;
-  border: 1px solid var(--border);
+  padding: 32px;
+  border-radius: 24px;
   width: 100%;
   max-width: 440px;
-  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .modalContent h3 {
   margin: 0 0 8px;
-  color: inherit;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
 }
 .modalContent p {
   margin: 0;
   color: var(--text-muted);
+  font-size: 0.95rem;
   line-height: 1.5;
 }
 .modalField {

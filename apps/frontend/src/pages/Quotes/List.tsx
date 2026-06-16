@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { ActionMenu } from "../../components/common/ActionMenu";
 import { Button } from "../../components/common/Button";
@@ -46,7 +47,7 @@ export default function QuotesList() {
   const [newAlertDate, setNewAlertDate] = useState("");
 
   const [noteModalQuote, setNoteModalQuote] = useState<quoteService.QuoteListItem | null>(null);
-  const [noteText, setNoteText] = useState("");
+  const [newNote, setNewNote] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
 
   function toIsoStartOfDay(dateStr: string) {
@@ -139,6 +140,14 @@ export default function QuotesList() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderBy, orderDir, estadoFilter, tipoClienteFilter]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void reloadQuotes();
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, fromDate, toDate, vencFromDate, vencToDate]);
+
   function statusStyle(s: string) {
     const v = s.toUpperCase();
     const className = `statusPill status--${v.toLowerCase()}`;
@@ -189,14 +198,10 @@ export default function QuotesList() {
 
   async function handleUpdateStatus() {
     if (!statusModalQuote || !newStatus) return;
-    if (newStatus === "POSPUESTA" && !newAlertDate) {
-      setError("Para posponer la cotización debés indicar una fecha de reactivación futura");
-      return;
-    }
     try {
       await quoteService.updateQuote(statusModalQuote.id, {
         estado: newStatus,
-        fecha_reactivacion_activa: newStatus === "POSPUESTA" && newAlertDate ? `${newAlertDate}T00:00:00.000Z` : undefined
+        fecha_reactivacion_activa: newStatus === "POSPUESTA" && newAlertDate ? `${newAlertDate}:00.000Z` : undefined
       });
       setStatusModalQuote(null);
       setNewAlertDate("");
@@ -211,7 +216,7 @@ export default function QuotesList() {
     if (!alertModalQuote) return;
     try {
       await quoteService.updateQuote(alertModalQuote.id, {
-        proxima_alerta: newAlertDate ? `${newAlertDate}T00:00:00.000Z` : null
+        proxima_alerta: newAlertDate ? `${newAlertDate}:00.000Z` : null
       });
       setAlertModalQuote(null);
       showToast({ type: "success", text: "Alerta actualizada correctamente" });
@@ -223,7 +228,7 @@ export default function QuotesList() {
 
   async function handleAddNote() {
     if (!noteModalQuote) return;
-    const nota = noteText.trim();
+    const nota = newNote.trim();
     if (!nota) return;
     setNoteSaving(true);
     try {
@@ -231,7 +236,7 @@ export default function QuotesList() {
         typeof crypto !== "undefined" && "randomUUID" in crypto ? (crypto as any).randomUUID() : String(Date.now());
       await quoteService.addQuoteTrackingNote(noteModalQuote.id, { nota, metadata: { noteKey } });
       setNoteModalQuote(null);
-      setNoteText("");
+      setNewNote("");
       showToast({ type: "success", text: "Nota agregada correctamente" });
     } catch (err) {
       setError(getErrorMessage(err, {}, "No se pudo agregar la nota"));
@@ -253,7 +258,7 @@ export default function QuotesList() {
               <Button disabled={loading} onClick={downloadCsv} className="btn--ghost">
                 <span style={{ marginRight: 8 }}>↓</span> Exportar lista
               </Button>
-              <Button disabled={loading} onClick={() => navigate("/quotes/create")} className="btn--primary">
+              <Button disabled={loading} onClick={() => navigate("/quotes/create")} className="btn--gradient">
                 + Nueva cotización
               </Button>
             </div>
@@ -285,16 +290,13 @@ export default function QuotesList() {
               <span className="hint">—</span>
               <input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="input" style={{ width: "130px" }} />
             </div>
-            <Button disabled={loading} onClick={() => void reloadQuotes()} className="btn--primary">
-              Buscar
-            </Button>
-            <Button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className="btn--ghost" style={{ display: "flex", gap: 8, backgroundColor: showAdvancedFilters ? "rgba(198, 255, 51, 0.15)" : "transparent" }}>
+            <Button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className="btn--ghost" style={{ display: "flex", gap: 8 }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 4H20L14 12V19L10 21V12L4 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg> Filtros
             </Button>
           </div>
 
           {showAdvancedFilters && (
-            <div className="filterToolbar" style={{ padding: "16px", background: "rgba(198, 255, 51, 0.15)", border: "1px solid var(--border)", borderRadius: "12px", marginTop: "-8px", marginBottom: "24px" }}>
+            <div className="filterToolbar" style={{ padding: "16px", background: "transparent", border: "1px solid var(--border)", borderRadius: "12px", marginTop: "-8px", marginBottom: "24px" }}>
               <select value={estadoFilter} onChange={(e) => setEstadoFilter(e.target.value)} className="select" style={{ backgroundColor: "var(--surface)", flex: 1 }}>
                 <option value="">Estado (todos)</option>
                 <option value="BORRADOR">Borrador</option>
@@ -403,7 +405,7 @@ export default function QuotesList() {
                           {
                             label: "Agregar Nota",
                             onClick: () => {
-                              setNoteText("");
+                              setNewNote("");
                               setNoteModalQuote(r);
                             }
                           },
@@ -411,14 +413,14 @@ export default function QuotesList() {
                             label: "Cambiar Estado",
                             onClick: () => {
                               setNewStatus(r.estado);
-                              setNewAlertDate(r.proxima_alerta ? r.proxima_alerta.split("T")[0] : "");
+                              setNewAlertDate(r.proxima_alerta ? r.proxima_alerta.slice(0, 16) : "");
                               setStatusModalQuote(r);
                             }
                           },
                           {
                             label: "Modificar Alerta",
                             onClick: () => {
-                              setNewAlertDate(r.proxima_alerta ? r.proxima_alerta.split("T")[0] : "");
+                              setNewAlertDate(r.proxima_alerta ? r.proxima_alerta.slice(0, 16) : "");
                               setAlertModalQuote(r);
                             }
                           },
@@ -451,83 +453,72 @@ export default function QuotesList() {
         </div>
       </div>
 
-      {statusModalQuote && (
+      {statusModalQuote ? createPortal(
         <div className="modalOverlay" onClick={() => setStatusModalQuote(null)}>
-          <div className="modalContent" onClick={(e) => e.stopPropagation()}>
+          <div className="modalContent" onClick={(event) => event.stopPropagation()}>
             <h3>Cambiar Estado</h3>
             <p>Cotización #{statusModalQuote.id}</p>
-            <div style={{ marginTop: 16 }}>
-              <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className="select" style={{ width: "100%" }}>
+            <div className="modalField">
+              <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className="select modalControl">
                 <option value="BORRADOR">Borrador</option>
                 <option value="EMITIDA">Emitida</option>
                 <option value="ENVIADA">Enviada</option>
                 <option value="POSPUESTA">Pospuesta</option>
-                <option value="PEND_REACTIVACION">Pend. reactivación</option>
-                <option value="CERRADA_PERDIDA">Cerrada perdida</option>
                 <option value="CERRADA_GANADA">Cerrada ganada</option>
+                <option value="CERRADA_PERDIDA">Cerrada perdida</option>
+                <option value="VENCIDA">Vencida</option>
               </select>
-              {newStatus === "POSPUESTA" ? (
-                <div style={{ marginTop: 12 }}>
-                  <input
-                    type="date"
-                    value={newAlertDate}
-                    onChange={(e) => setNewAlertDate(e.target.value)}
-                    className="input"
-                    style={{ width: "100%" }}
-                  />
-                  <div className="hint" style={{ marginTop: 6 }}>
-                    Al posponer, la fecha de reactivación futura es obligatoria.
-                  </div>
-                </div>
-              ) : null}
             </div>
-            <div style={{ display: "flex", gap: 12, marginTop: 24, justifyContent: "flex-end" }}>
+            <div className="modalActions">
               <Button onClick={() => setStatusModalQuote(null)} className="btn--ghost">Cancelar</Button>
-              <Button onClick={handleUpdateStatus} className="btn--primary">Guardar</Button>
+              <Button disabled={loading} onClick={() => void handleUpdateStatus()} className="btn--primary">Guardar</Button>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        document.body
+      ) : null}
 
-      {alertModalQuote && (
+      {alertModalQuote ? createPortal(
         <div className="modalOverlay" onClick={() => setAlertModalQuote(null)}>
-          <div className="modalContent" onClick={(e) => e.stopPropagation()}>
-            <h3>Modificar Próxima Alerta</h3>
+          <div className="modalContent" onClick={(event) => event.stopPropagation()}>
+            <h3>Modificar Alerta</h3>
             <p>Cotización #{alertModalQuote.id}</p>
-            <div style={{ marginTop: 16 }}>
-              <input type="date" value={newAlertDate} onChange={(e) => setNewAlertDate(e.target.value)} className="input" style={{ width: "100%" }} />
-              <button onClick={() => setNewAlertDate("")} style={{ marginTop: 8, background: "none", border: "none", color: "var(--color-primary)", cursor: "pointer", fontSize: 13 }}>Limpiar alerta</button>
+            <div className="modalField">
+              <input type="datetime-local" value={newAlertDate} onChange={(e) => setNewAlertDate(e.target.value)} className="input modalControl" />
+              <button onClick={() => setNewAlertDate("")} style={{ marginTop: 8, background: "none", border: "none", color: "var(--primary)", cursor: "pointer", fontSize: 13 }}>Limpiar alerta</button>
             </div>
-            <div style={{ display: "flex", gap: 12, marginTop: 24, justifyContent: "flex-end" }}>
+            <div className="modalActions">
               <Button onClick={() => setAlertModalQuote(null)} className="btn--ghost">Cancelar</Button>
-              <Button onClick={handleUpdateAlert} className="btn--primary">Guardar</Button>
+              <Button disabled={loading} onClick={() => void handleUpdateAlert()} className="btn--primary">Guardar</Button>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        document.body
+      ) : null}
 
-      {noteModalQuote && (
+      {noteModalQuote ? createPortal(
         <div className="modalOverlay" onClick={() => (noteSaving ? null : setNoteModalQuote(null))}>
           <div className="modalContent" onClick={(e) => e.stopPropagation()}>
             <h3>Agregar Nota</h3>
             <p>Cotización #{noteModalQuote.id}</p>
-            <div style={{ marginTop: 16 }}>
+            <div className="modalField">
               <textarea
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                className="textarea"
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                className="textarea modalControl"
                 placeholder="Escribe una nota..."
               />
             </div>
-            <div style={{ display: "flex", gap: 12, marginTop: 24, justifyContent: "flex-end" }}>
+            <div className="modalActions">
               <Button onClick={() => setNoteModalQuote(null)} disabled={noteSaving} className="btn--ghost">Cancelar</Button>
-              <Button onClick={handleAddNote} disabled={noteSaving || !noteText.trim()} className="btn--primary">
+              <Button onClick={() => void handleAddNote()} disabled={noteSaving || !newNote.trim()} className="btn--primary">
                 {noteSaving ? "Guardando..." : "Guardar"}
               </Button>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+        document.body
+      ) : null}
     </div>
   );
 }
