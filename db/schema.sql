@@ -3,6 +3,17 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS empresas (
   id BIGSERIAL PRIMARY KEY,
   nombre TEXT NOT NULL UNIQUE,
+  logo_url TEXT,
+  cuit TEXT,
+  razon_social TEXT,
+  direccion TEXT,
+  provincia TEXT,
+  codigo_postal TEXT,
+  pais TEXT,
+  telefono_contacto TEXT,
+  email TEXT,
+  website_url TEXT,
+  footer_text TEXT,
   activo BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -103,6 +114,25 @@ CREATE TABLE IF NOT EXISTS empresa_catalog_options (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS dashboard_user_notes (
+  id BIGSERIAL PRIMARY KEY,
+  id_usuario BIGINT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+  text TEXT NOT NULL,
+  completed BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS cliente_contactos (
+  id BIGSERIAL PRIMARY KEY,
+  id_empresa BIGINT NOT NULL REFERENCES empresas(id) ON DELETE CASCADE,
+  id_cliente BIGINT NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
+  id_usuario BIGINT NOT NULL REFERENCES usuarios(id),
+  fecha_carga TIMESTAMPTZ NOT NULL DEFAULT now(),
+  fecha_contacto TIMESTAMPTZ NOT NULL,
+  observacion TEXT
+);
+
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS id_empresa BIGINT REFERENCES empresas(id);
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER NOT NULL DEFAULT 0;
@@ -152,6 +182,26 @@ ALTER TABLE configuraciones ADD COLUMN IF NOT EXISTS id_empresa BIGINT REFERENCE
 ALTER TABLE empresa_catalog_options ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT TRUE;
 ALTER TABLE empresa_catalog_options ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
 ALTER TABLE empresa_catalog_options ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS logo_url TEXT;
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS cuit TEXT;
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS razon_social TEXT;
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS direccion TEXT;
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS provincia TEXT;
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS codigo_postal TEXT;
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS pais TEXT;
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS telefono_contacto TEXT;
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS website_url TEXT;
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS footer_text TEXT;
+
+ALTER TABLE dashboard_user_notes ADD COLUMN IF NOT EXISTS completed BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE dashboard_user_notes ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE dashboard_user_notes ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+ALTER TABLE cliente_contactos ADD COLUMN IF NOT EXISTS id_empresa BIGINT REFERENCES empresas(id) ON DELETE CASCADE;
+ALTER TABLE cliente_contactos ADD COLUMN IF NOT EXISTS fecha_carga TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE cliente_contactos ADD COLUMN IF NOT EXISTS observacion TEXT;
 
 DO $$
 DECLARE
@@ -237,6 +287,21 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_configuraciones_empresa_clave
 CREATE UNIQUE INDEX IF NOT EXISTS idx_catalog_options_empresa_tipo_label
   ON empresa_catalog_options (id_empresa, tipo, label);
 
+INSERT INTO empresa_catalog_options (id_empresa, tipo, label, value, activo)
+SELECT e.id, defaults.tipo, defaults.label, defaults.value, true
+FROM empresas e
+CROSS JOIN (
+  VALUES
+    ('tipo_cliente', 'Consumidor Final', 'Consumidor Final'),
+    ('tipo_cliente', 'Cliente final', 'Cliente final'),
+    ('tipo_cliente', 'Distribuidor', 'Distribuidor')
+) AS defaults(tipo, label, value)
+ON CONFLICT (id_empresa, tipo, label)
+DO UPDATE SET
+  value = EXCLUDED.value,
+  activo = true,
+  updated_at = now();
+
 CREATE INDEX IF NOT EXISTS idx_usuarios_id_empresa ON usuarios(id_empresa);
 CREATE INDEX IF NOT EXISTS idx_clientes_id_empresa ON clientes(id_empresa);
 CREATE INDEX IF NOT EXISTS idx_productos_id_empresa ON productos(id_empresa);
@@ -252,5 +317,9 @@ CREATE INDEX IF NOT EXISTS idx_cotizaciones_id_usuario ON cotizaciones(id_usuari
 CREATE INDEX IF NOT EXISTS idx_items_cotizacion_id_cotizacion ON items_cotizacion(id_cotizacion);
 CREATE INDEX IF NOT EXISTS idx_items_cotizacion_id_producto ON items_cotizacion(id_producto);
 CREATE INDEX IF NOT EXISTS idx_seguimiento_id_cotizacion ON seguimiento(id_cotizacion);
+CREATE INDEX IF NOT EXISTS idx_dashboard_user_notes_id_usuario ON dashboard_user_notes(id_usuario, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_cliente_contactos_id_cliente_fecha_contacto ON cliente_contactos(id_cliente, fecha_contacto DESC);
+CREATE INDEX IF NOT EXISTS idx_cliente_contactos_id_empresa_fecha_contacto ON cliente_contactos(id_empresa, fecha_contacto DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_empresas_cuit_unique ON empresas(cuit) WHERE cuit IS NOT NULL;
 
 COMMIT;

@@ -1,7 +1,7 @@
 export type UserRole = "SuperAdmin" | "Admin" | "Vendedor";
 
 export type CurrencyCode = "ARS" | "USD";
-export type CatalogOptionType = "forma_pago" | "lugar_entrega" | "tipo_iva";
+export type CatalogOptionType = "forma_pago" | "lugar_entrega" | "tipo_iva" | "tipo_cliente";
 
 export interface User {
   id: number;
@@ -15,6 +15,17 @@ export interface User {
 export interface Company {
   id: number;
   nombre: string;
+  logo_url?: string | null;
+  cuit?: string | null;
+  razon_social?: string | null;
+  direccion?: string | null;
+  provincia?: string | null;
+  codigo_postal?: string | null;
+  pais?: string | null;
+  telefono_contacto?: string | null;
+  email?: string | null;
+  website_url?: string | null;
+  footer_text?: string | null;
   activo: boolean;
   created_at?: string;
   updated_at?: string;
@@ -58,6 +69,26 @@ export interface Client {
   provincia?: string | null;
   estado: string;
   ult_contacto?: string | null;
+}
+
+export interface ClientContact {
+  id: number;
+  id_empresa: number;
+  id_cliente: number;
+  id_usuario: number;
+  fecha_carga: string;
+  fecha_contacto: string;
+  observacion?: string | null;
+  usuario_nombre: string;
+}
+
+export interface DashboardNote {
+  id: number;
+  id_usuario: number;
+  text: string;
+  completed: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Product {

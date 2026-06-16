@@ -14,11 +14,12 @@ export async function apiRequest<T>(input: {
   body?: unknown;
 }) {
   const url = new URL(input.path, env.apiBaseUrl);
+  const isFormData = typeof FormData !== "undefined" && input.body instanceof FormData;
 
   const headers = new Headers();
   headers.set("Accept", "application/json");
 
-  if (input.body !== undefined) {
+  if (input.body !== undefined && !isFormData) {
     headers.set("Content-Type", "application/json");
   }
 
@@ -29,7 +30,12 @@ export async function apiRequest<T>(input: {
   const response = await fetch(url, {
     method: input.method ?? "GET",
     headers,
-    body: input.body !== undefined ? JSON.stringify(input.body) : undefined
+    body:
+      input.body === undefined
+        ? undefined
+        : isFormData
+          ? input.body as FormData
+          : JSON.stringify(input.body)
   });
 
   if (!response.ok) {

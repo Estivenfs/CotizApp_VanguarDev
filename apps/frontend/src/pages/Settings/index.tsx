@@ -7,6 +7,8 @@ import type { Company, ManagedUser, UserRole } from "../../types";
 import * as companyService from "../../services/company.service";
 import * as configService from "../../services/config.service";
 import * as userAdminService from "../../services/userAdmin.service";
+import { getErrorMessage } from "../../utils/feedback";
+import { CompanyFormDialog, createEmptyCompanyDraft, type CompanyDraft } from "./CompanyFormDialog";
 import { GeneralCatalogManager } from "./GeneralCatalogManager";
 import "../../styles/settings.css";
 
@@ -20,10 +22,54 @@ function normalizeEmail(value: string) {
   return value.trim().toLowerCase();
 }
 
+function revokeBlobUrl(url: string | null | undefined) {
+  if (url?.startsWith("blob:")) {
+    URL.revokeObjectURL(url);
+  }
+}
+
 function roleLabel(value: UserRole) {
   if (value === "SuperAdmin") return "SuperAdmin";
   if (value === "Admin") return "Admin";
   return "Vendedor";
+}
+
+const companyErrorMessages: Record<string, string> = {
+  nombre_required: "El nombre de la empresa es obligatorio.",
+  cuit_required: "El CUIT es obligatorio.",
+  razon_social_required: "La razón social es obligatoria.",
+  direccion_required: "La dirección es obligatoria.",
+  provincia_required: "La provincia es obligatoria.",
+  codigo_postal_required: "El código postal es obligatorio.",
+  pais_required: "El país es obligatorio.",
+  telefono_contacto_required: "El teléfono de contacto es obligatorio.",
+  email_required: "El email es obligatorio.",
+  email_invalido: "Ingresá un email válido.",
+  website_url_invalida: "Ingresá una URL válida para la página web.",
+  duplicate_nombre: "Ya existe una empresa con ese nombre.",
+  duplicate_cuit: "Ya existe una empresa con ese CUIT.",
+  logo_extension_invalida: "El logo debe ser JPG, PNG o ICO.",
+  logo_mime_invalido: "El archivo del logo no tiene un formato válido.",
+  logo_too_large: "El logo no puede superar los 5MB."
+};
+
+function companyToDraft(company: Company): CompanyDraft {
+  return {
+    nombre: company.nombre ?? "",
+    cuit: company.cuit ?? "",
+    razon_social: company.razon_social ?? "",
+    direccion: company.direccion ?? "",
+    provincia: company.provincia ?? "",
+    codigo_postal: company.codigo_postal ?? "",
+    pais: company.pais ?? "Argentina",
+    telefono_contacto: company.telefono_contacto ?? "",
+    email: company.email ?? "",
+    website_url: company.website_url ?? "",
+    footer_text: company.footer_text ?? "",
+    logoFile: null,
+    logoPreviewUrl: companyService.getCompanyLogoUrl(company.logo_url),
+    removeLogo: false
+  };
 }
 
 function getUserLockStatus(user: ManagedUser) {
@@ -69,6 +115,7 @@ export default function SettingsPage() {
 
   const isSuperAdmin = user?.rol === "SuperAdmin";
   const canManageUsers = user?.rol === "SuperAdmin" || user?.rol === "Admin";
+  const canManageQuoteCatalogs = user?.rol === "Admin";
 
   const tabs = useMemo(() => {
     const items: Array<{ key: TabKey; label: string }> = [];
@@ -114,10 +161,10 @@ export default function SettingsPage() {
   const [companiesLoading, setCompaniesLoading] = useState(false);
   const [companiesIncludeInactive, setCompaniesIncludeInactive] = useState(false);
   const [companiesError, setCompaniesError] = useState<string | null>(null);
-  const [newCompanyName, setNewCompanyName] = useState("");
   const [companySaving, setCompanySaving] = useState(false);
+  const [companyDialogMode, setCompanyDialogMode] = useState<"create" | "edit" | null>(null);
   const [editingCompanyId, setEditingCompanyId] = useState<number | null>(null);
-  const [editingCompanyName, setEditingCompanyName] = useState("");
+  const [companyDraft, setCompanyDraft] = useState<CompanyDraft>(() => createEmptyCompanyDraft());
 
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -248,43 +295,102 @@ export default function SettingsPage() {
   }
 
   async function handleCreateCompany() {
-    const nombre = toNonEmptyString(newCompanyName);
-    if (!nombre) {
-      setCompaniesError("Ingresá un nombre de empresa");
-      return;
-    }
-
     setCompanySaving(true);
     setCompaniesError(null);
     try {
-      await companyService.createCompany({ nombre });
-      setNewCompanyName("");
+      await companyService.createCompany({
+        nombre: companyDraft.nombre.trim(),
+        cuit: companyDraft.cuit.trim(),
+        razon_social: companyDraft.razon_social.trim(),
+        direccion: companyDraft.direccion.trim(),
+        provincia: companyDraft.provincia.trim(),
+        codigo_postal: companyDraft.codigo_postal.trim(),
+        pais: companyDraft.pais.trim(),
+        telefono_contacto: companyDraft.telefono_contacto.trim(),
+        email: companyDraft.email.trim(),
+        website_url: companyDraft.website_url.trim() || null,
+        footer_text: companyDraft.footer_text.trim() || null,
+        logo: companyDraft.logoFile
+      });
+      revokeBlobUrl(companyDraft.logoPreviewUrl);
+      setCompanyDraft(createEmptyCompanyDraft());
+      setCompanyDialogMode(null);
       await loadCompanies();
     } catch (err) {
-      setCompaniesError(err instanceof Error ? err.message : "error_creando_empresa");
+      setCompaniesError(getErrorMessage(err, companyErrorMessages, "No se pudo crear la empresa"));
     } finally {
       setCompanySaving(false);
     }
   }
 
   async function handleUpdateCompany(id: number) {
-    const nombre = toNonEmptyString(editingCompanyName);
-    if (!nombre) {
-      setCompaniesError("Ingresá un nombre de empresa");
-      return;
-    }
     setCompanySaving(true);
     setCompaniesError(null);
     try {
-      await companyService.updateCompany(id, { nombre });
+      await companyService.updateCompany(id, {
+        nombre: companyDraft.nombre.trim(),
+        cuit: companyDraft.cuit.trim(),
+        razon_social: companyDraft.razon_social.trim(),
+        direccion: companyDraft.direccion.trim(),
+        provincia: companyDraft.provincia.trim(),
+        codigo_postal: companyDraft.codigo_postal.trim(),
+        pais: companyDraft.pais.trim(),
+        telefono_contacto: companyDraft.telefono_contacto.trim(),
+        email: companyDraft.email.trim(),
+        website_url: companyDraft.website_url.trim() || null,
+        footer_text: companyDraft.footer_text.trim() || null,
+        logo: companyDraft.logoFile,
+        remove_logo: companyDraft.removeLogo
+      });
+      revokeBlobUrl(companyDraft.logoPreviewUrl);
       setEditingCompanyId(null);
-      setEditingCompanyName("");
+      setCompanyDraft(createEmptyCompanyDraft());
+      setCompanyDialogMode(null);
       await loadCompanies();
     } catch (err) {
-      setCompaniesError(err instanceof Error ? err.message : "error_actualizando_empresa");
+      setCompaniesError(getErrorMessage(err, companyErrorMessages, "No se pudo actualizar la empresa"));
     } finally {
       setCompanySaving(false);
     }
+  }
+
+  function updateCompanyDraft<K extends keyof CompanyDraft>(field: K, value: CompanyDraft[K]) {
+    setCompanyDraft((current) => ({ ...current, [field]: value }));
+  }
+
+  function handleCompanyLogoChange(file: File | null) {
+    setCompanyDraft((current) => {
+      revokeBlobUrl(current.logoPreviewUrl);
+      return {
+        ...current,
+        logoFile: file,
+        logoPreviewUrl: file ? URL.createObjectURL(file) : null,
+        removeLogo: file ? false : current.removeLogo
+      };
+    });
+  }
+
+  function openCreateCompanyDialog() {
+    revokeBlobUrl(companyDraft.logoPreviewUrl);
+    setCompaniesError(null);
+    setEditingCompanyId(null);
+    setCompanyDraft(createEmptyCompanyDraft());
+    setCompanyDialogMode("create");
+  }
+
+  function openEditCompanyDialog(company: Company) {
+    revokeBlobUrl(companyDraft.logoPreviewUrl);
+    setCompaniesError(null);
+    setEditingCompanyId(company.id);
+    setCompanyDraft(companyToDraft(company));
+    setCompanyDialogMode("edit");
+  }
+
+  function closeCompanyDialog() {
+    revokeBlobUrl(companyDraft.logoPreviewUrl);
+    setCompanyDialogMode(null);
+    setEditingCompanyId(null);
+    setCompanyDraft(createEmptyCompanyDraft());
   }
 
   function handleDeactivateCompany(id: number) {
@@ -528,14 +634,23 @@ export default function SettingsPage() {
         <div className="stack">
           <div>
             <h2 style={{ fontSize: "1.5rem", margin: "0 0 8px 0" }}>Ajustes de Cotización</h2>
-            <p className="hint" style={{ margin: "0 0 24px 0" }}>Configurá la tasa de cambio y las opciones predeterminadas para los catálogos y atributos de las cotizaciones.</p>
+            <p className="hint" style={{ margin: "0 0 24px 0" }}>
+              {canManageQuoteCatalogs
+                ? "Configurá la tasa de cambio y las opciones predeterminadas para los catálogos y atributos de las cotizaciones."
+                : "Como vendedor, solo podés configurar la tasa de cambio. Los demás catálogos quedan reservados para administradores."}
+            </p>
             
             {/* Navigation Pills */}
             <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "12px", msOverflowStyle: "none", scrollbarWidth: "none" }} className="hide-scrollbar">
               <button onClick={() => document.getElementById("section-moneda")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Moneda y Cotización</button>
-              <button onClick={() => document.getElementById("section-forma_pago")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Forma de Pago</button>
-              <button onClick={() => document.getElementById("section-lugar_entrega")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Lugar de Entrega</button>
-              <button onClick={() => document.getElementById("section-tipo_iva")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Tipo de IVA</button>
+              {canManageQuoteCatalogs ? (
+                <>
+                  <button onClick={() => document.getElementById("section-forma_pago")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Forma de Pago</button>
+                  <button onClick={() => document.getElementById("section-lugar_entrega")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Lugar de Entrega</button>
+                  <button onClick={() => document.getElementById("section-tipo_cliente")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Tipo de Cliente</button>
+                  <button onClick={() => document.getElementById("section-tipo_iva")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Tipo de IVA</button>
+                </>
+              ) : null}
             </div>
           </div>
 
@@ -576,7 +691,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <GeneralCatalogManager />
+          {canManageQuoteCatalogs ? <GeneralCatalogManager /> : null}
         </div>
       ) : null}
 
@@ -921,22 +1036,17 @@ export default function SettingsPage() {
           </div>
 
           <div className="card" style={{ padding: 16, marginTop: 16 }}>
-            <div className="sectionTitle">Nueva empresa</div>
-            <div className="row" style={{ marginTop: 10 }}>
-              <label className="field" style={{ flex: 1, minWidth: 260 }}>
-                <span className="label">Nombre</span>
-                <input
-                  className="input"
-                  value={newCompanyName}
-                  onChange={(e) => setNewCompanyName(e.target.value)}
-                />
-              </label>
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+              <div>
+                <div className="sectionTitle" style={{ marginBottom: 0 }}>Nueva empresa</div>
+                <div className="hint">Cargá los datos fiscales, comerciales y el logo institucional.</div>
+              </div>
               <Button
                 className="btn--primary"
                 disabled={companySaving}
-                onClick={() => void handleCreateCompany()}
+                onClick={openCreateCompanyDialog}
               >
-                {companySaving ? "Guardando..." : "Crear"}
+                + Crear empresa
               </Button>
             </div>
           </div>
@@ -956,68 +1066,39 @@ export default function SettingsPage() {
               </thead>
               <tbody>
                 {filteredCompanies.map((c) => {
-                  const isEditing = editingCompanyId === c.id;
                   return (
                     <tr key={c.id}>
                       <td className="cellMuted">{c.id}</td>
                       <td>
-                        {isEditing ? (
-                          <input
-                            className="input"
-                            value={editingCompanyName}
-                            onChange={(e) => setEditingCompanyName(e.target.value)}
-                          />
-                        ) : (
-                          c.nombre
-                        )}
+                        <div className="companyNameCell">
+                          <div className="companyNameCell__logo">
+                            {c.logo_url ? <img src={companyService.getCompanyLogoUrl(c.logo_url) ?? ""} alt={c.nombre} /> : "Logo"}
+                          </div>
+                          <div className="companyNameCell__meta">
+                            <div className="companyNameCell__name">{c.nombre}</div>
+                            <div className="companyNameCell__sub">{c.razon_social || c.email || "-"}</div>
+                          </div>
+                        </div>
                       </td>
                       <td>{c.activo ? "Activa" : "Inactiva"}</td>
                       <td className="nowrap">
                         <div className="row" style={{ gap: 8 }}>
-                          {isEditing ? (
-                            <>
-                              <Button
-                                className="btn--sm"
-                                onClick={() => {
-                                  setEditingCompanyId(null);
-                                  setEditingCompanyName("");
-                                }}
-                                disabled={companySaving}
-                              >
-                                Cancelar
-                              </Button>
-                              <Button
-                                className="btn--sm btn--primary"
-                                onClick={() => void handleUpdateCompany(c.id)}
-                                disabled={companySaving}
-                              >
-                                Guardar
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                className="btn--sm"
-                                onClick={() => {
-                                  setEditingCompanyId(c.id);
-                                  setEditingCompanyName(c.nombre);
-                                  setCompaniesError(null);
-                                }}
-                                disabled={companySaving}
-                              >
-                                Editar
-                              </Button>
-                              {c.activo ? (
-                                <Button
-                                  className="btn--sm btn--danger"
-                                  onClick={() => void handleDeactivateCompany(c.id)}
-                                  disabled={companySaving}
-                                >
-                                  Desactivar
-                                </Button>
-                              ) : null}
-                            </>
-                          )}
+                          <Button
+                            className="btn--sm"
+                            onClick={() => openEditCompanyDialog(c)}
+                            disabled={companySaving}
+                          >
+                            Editar
+                          </Button>
+                          {c.activo ? (
+                            <Button
+                              className="btn--sm btn--danger"
+                              onClick={() => void handleDeactivateCompany(c.id)}
+                              disabled={companySaving}
+                            >
+                              Desactivar
+                            </Button>
+                          ) : null}
                         </div>
                       </td>
                     </tr>
@@ -1036,6 +1117,18 @@ export default function SettingsPage() {
         </div>
       </div>
       ) : null}
+      <CompanyFormDialog
+        open={companyDialogMode !== null}
+        title={companyDialogMode === "edit" ? "Editar empresa" : "Nueva empresa"}
+        submitLabel={companyDialogMode === "edit" ? "Guardar cambios" : "Crear empresa"}
+        saving={companySaving}
+        error={companyDialogMode ? companiesError : null}
+        draft={companyDraft}
+        onClose={closeCompanyDialog}
+        onSubmit={() => companyDialogMode === "edit" && editingCompanyId ? handleUpdateCompany(editingCompanyId) : handleCreateCompany()}
+        onChange={updateCompanyDraft}
+        onLogoChange={handleCompanyLogoChange}
+      />
       {activeTab === "accessibility" ? (
         <div className="stack">
           <div>

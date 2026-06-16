@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../components/common/Button";
 import * as clientService from "../../services/client.service";
+import * as configService from "../../services/config.service";
 import { useToast } from "../../context/ToastContext";
 import type { Client } from "../../types";
 import { getErrorMessage } from "../../utils/feedback";
 import "../../styles/clients.css";
 
 type ClientDraft = Omit<Client, "id">;
+const fallbackClientTypeOptions = ["Cliente final", "Distribuidor"];
 
 const emptyDraft: ClientDraft = {
   nombre_empresa: "",
@@ -26,6 +28,7 @@ const clientErrorMessages: Record<string, string> = {
   nombre_empresa_required: "La razón social es obligatoria.",
   cuit_tax_id_required: "El CUIT / CUIL es obligatorio.",
   email_invalido: "Ingresá un email válido.",
+  clasificacion_invalida: "El tipo de cliente seleccionado no es válido o está inactivo.",
   duplicate_nombre_empresa: "Ya existe un cliente con esa razón social en esta empresa.",
   duplicate_cuit_tax_id: "Ya existe un cliente con ese CUIT / CUIL en esta empresa.",
   estado_invalido: "El estado seleccionado no es válido."
@@ -41,6 +44,7 @@ export function ClientCreate() {
   const { id } = useParams();
   const isEditMode = Boolean(id);
   const [draft, setDraft] = useState<ClientDraft>(emptyDraft);
+  const [clientTypeOptions, setClientTypeOptions] = useState<string[]>(fallbackClientTypeOptions);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -65,6 +69,25 @@ export function ClientCreate() {
   }
 
   useEffect(() => {
+    async function loadClientTypes() {
+      try {
+        const options = await configService.listCatalogOptions({ tipo: "tipo_cliente" });
+        const labels = options
+          .map((option) => option.label.trim())
+          .filter(Boolean);
+
+        if (labels.length > 0) {
+          setClientTypeOptions(Array.from(new Set(labels)));
+        }
+      } catch {
+        setClientTypeOptions(fallbackClientTypeOptions);
+      }
+    }
+
+    void loadClientTypes();
+  }, []);
+
+  useEffect(() => {
     if (!id) return;
 
     async function loadClient() {
@@ -86,6 +109,20 @@ export function ClientCreate() {
 
     void loadClient();
   }, [id]);
+
+  useEffect(() => {
+    setDraft((current) => {
+      const currentType = current.clasificacion?.trim();
+      if (currentType) {
+        return current;
+      }
+
+      return {
+        ...current,
+        clasificacion: clientTypeOptions[0] ?? emptyDraft.clasificacion
+      };
+    });
+  }, [clientTypeOptions]);
 
   async function onSave() {
     setError(null);
@@ -165,8 +202,11 @@ export function ClientCreate() {
               onChange={(e) => setDraft((d) => ({ ...d, clasificacion: e.target.value }))}
               className="select"
             >
-              <option value="Distribuidor">Distribuidor</option>
-              <option value="Cliente final">Cliente final</option>
+              {clientTypeOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
             </select>
           </label>
         </div>

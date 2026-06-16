@@ -12,9 +12,11 @@
     "init": "tsx src/scripts/init.ts"
   },
   "dependencies": {
+    "@types/multer": "^2.1.0",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
+    "multer": "^2.2.0",
     "pdfkit": "^0.17.2",
     "pg": "^8.21.0"
   },

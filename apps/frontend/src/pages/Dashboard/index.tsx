@@ -5,6 +5,7 @@ import { FilePlus, UserPlus, PackagePlus, AlarmClock, MessageSquare, Send, Users
 import { Button } from "../../components/common/Button";
 import { useToast } from "../../context/ToastContext";
 import { useAuth } from "../../context/AuthContext";
+import * as dashboardService from "../../services/dashboard.service";
 import * as quoteService from "../../services/quote.service";
 import { getErrorMessage } from "../../utils/feedback";
 import { NotesWidget } from "./NotesWidget";
@@ -16,13 +17,33 @@ function formatDate(iso: string | null) {
   return Number.isFinite(d.getTime()) ? d.toLocaleDateString("es-AR") : iso;
 }
 
+function formatKpiDelta(current: number, previous: number) {
+  if (previous === 0) {
+    if (current === 0) {
+      return { label: "= 0%", tone: "neutral" as const };
+    }
+    return { label: "↗ +100%", tone: "positive" as const };
+  }
+
+  const percentage = Math.round(((current - previous) / previous) * 100);
+  if (percentage > 0) {
+    return { label: `↗ +${percentage}%`, tone: "positive" as const };
+  }
+  if (percentage < 0) {
+    return { label: `↘ ${percentage}%`, tone: "negative" as const };
+  }
+  return { label: "= 0%", tone: "neutral" as const };
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [items, setItems] = useState<quoteService.QuoteReactivationAlert[]>([]);
+  const [period, setPeriod] = useState<dashboardService.DashboardPeriod>("week");
+  const [metrics, setMetrics] = useState<dashboardService.DashboardMetrics | null>(null);
+  const [items, setItems] = useState<dashboardService.DashboardReactivation[]>([]);
   const [statusModalQuote, setStatusModalQuote] = useState<quoteService.QuoteReactivationAlert | null>(null);
   const [newStatus, setNewStatus] = useState("");
   const [newAlertDate, setNewAlertDate] = useState("");
@@ -31,10 +52,11 @@ export default function DashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await quoteService.listReactivationAlerts();
-      setItems(data);
+      const data = await dashboardService.getDashboard({ period });
+      setMetrics(data.metrics);
+      setItems(data.reactivations);
     } catch (err) {
-      setError(getErrorMessage(err, {}, "No se pudieron cargar las alertas de reactivación"));
+      setError(getErrorMessage(err, {}, "No se pudieron cargar los datos del dashboard"));
     } finally {
       setLoading(false);
     }
@@ -42,7 +64,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     void reload();
-  }, []);
+  }, [period]);
 
   async function handleUpdateStatus() {
     if (!statusModalQuote || !newStatus) return;
@@ -64,12 +86,16 @@ export default function DashboardPage() {
     }
   }
 
+  const quotesSentDelta = formatKpiDelta(metrics?.quotesSentCurrent ?? 0, metrics?.quotesSentPrevious ?? 0);
+  const clientsContactedDelta = formatKpiDelta(metrics?.clientsContactedCurrent ?? 0, metrics?.clientsContactedPrevious ?? 0);
+  const salesWonDelta = formatKpiDelta(metrics?.salesWonCurrent ?? 0, metrics?.salesWonPrevious ?? 0);
+
   return (
     <div className="page" style={{ height: "calc(100vh - 100px)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <div className="stack" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
         <div className="pageHeader">
           <div>
-            <h1 className="pageTitle"><span style={{ fontWeight: 400 }}>Hola,</span> {user?.nombre || "Usuario"} {user?.apellido || ""}</h1>
+            <h1 className="pageTitle"><span style={{ fontWeight: 400 }}>Hola,</span> {user?.nombre || "Usuario"}</h1>
             <div className="pageSubtitle">Resumen de tu actividad y próximas alertas</div>
           </div>
           <div className="pageHeaderSearch">
@@ -82,37 +108,43 @@ export default function DashboardPage() {
       <div className="dashboardMainGrid">
         {/* Left Column */}
         <div className="dashboardColLeft">
-          {/* Tu mes en números */}
+          {/* Ultimos 30 dias */}
           <div className="dashboardSection">
-            <h3 style={{ margin: "0 0 16px 0", fontSize: "16px", fontWeight: 600 }}>Tu mes en números</h3>
+            <h3 style={{ margin: "0 0 16px 0", fontSize: "16px", fontWeight: 600 }}>Tus ultimos 30 dias</h3>
             <div className="kpiGrid">
               <div className="kpiCard kpiCard--animGradient1">
                 <div className="kpiTop">
                   <div className="kpiLabel">Cotizaciones<br/><strong>enviadas</strong></div>
-                  <div className="kpiBadge kpiBadge--positive">↗ +25%</div>
+                  <div className={`kpiBadge ${quotesSentDelta.tone === "positive" ? "kpiBadge--positive" : quotesSentDelta.tone === "negative" ? "kpiBadge--negative" : ""}`}>
+                    {quotesSentDelta.label}
+                  </div>
                 </div>
                 <div className="kpiBottom">
-                  <div className="kpiValue">25</div>
+                  <div className="kpiValue">{metrics?.quotesSentCurrent ?? 0}</div>
                   <div className="kpiIconWrap"><Send size={20} /></div>
                 </div>
               </div>
               <div className="kpiCard kpiCard--animGradient3">
                 <div className="kpiTop">
                   <div className="kpiLabel">Clientes<br/><strong>contactados</strong></div>
-                  <div className="kpiBadge kpiBadge--negative">↘ -5%</div>
+                  <div className={`kpiBadge ${clientsContactedDelta.tone === "positive" ? "kpiBadge--positive" : clientsContactedDelta.tone === "negative" ? "kpiBadge--negative" : ""}`}>
+                    {clientsContactedDelta.label}
+                  </div>
                 </div>
                 <div className="kpiBottom">
-                  <div className="kpiValue">30</div>
+                  <div className="kpiValue">{metrics?.clientsContactedCurrent ?? 0}</div>
                   <div className="kpiIconWrap"><Users size={20} /></div>
                 </div>
               </div>
               <div className="kpiCard kpiCard--animGradient2">
                 <div className="kpiTop">
                   <div className="kpiLabel">Ventas<br/><strong>cerradas</strong></div>
-                  <div className="kpiBadge kpiBadge--positive">↗ +8%</div>
+                  <div className={`kpiBadge ${salesWonDelta.tone === "positive" ? "kpiBadge--positive" : salesWonDelta.tone === "negative" ? "kpiBadge--negative" : ""}`}>
+                    {salesWonDelta.label}
+                  </div>
                 </div>
                 <div className="kpiBottom">
-                  <div className="kpiValue">05</div>
+                  <div className="kpiValue">{metrics?.salesWonCurrent ?? 0}</div>
                   <div className="kpiIconWrap"><CheckCircle size={20} /></div>
                 </div>
               </div>
@@ -122,15 +154,15 @@ export default function DashboardPage() {
           <div className="dashboardSectionHeader" style={{ marginTop: 8 }}>
             <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 600 }}>Próximas reactivaciones</h3>
             <div className="dashboardTabs">
-              <button className="dashboardTab dashboardTab--active">Esta semana</button>
-              <button className="dashboardTab">Este mes</button>
+              <button className={`dashboardTab ${period === "week" ? "dashboardTab--active" : ""}`} onClick={() => setPeriod("week")}>Esta semana</button>
+              <button className={`dashboardTab ${period === "month" ? "dashboardTab--active" : ""}`} onClick={() => setPeriod("month")}>Este mes</button>
             </div>
           </div>
           
           <div className="dashWidget">
             <div className="dashTableWrap hide-scrollbar">
               {error ? <div className="error" style={{ marginBottom: 16 }}>{error}</div> : null}
-              {loading ? <div className="hint" style={{ marginBottom: 16 }}>Cargando alertas...</div> : null}
+              {loading ? <div className="hint" style={{ marginBottom: 16 }}>Cargando dashboard...</div> : null}
 
               <table className="dashTable">
                 <thead>
@@ -158,7 +190,7 @@ export default function DashboardPage() {
                             onClick={() => {
                               setNewStatus(item.estado);
                               setNewAlertDate(item.fecha_reactivacion_activa ? item.fecha_reactivacion_activa.split("T")[0] : "");
-                              setStatusModalQuote(item);
+                              setStatusModalQuote(item as unknown as quoteService.QuoteReactivationAlert);
                             }}
                             title="Gestionar Alarma"
                           >
@@ -177,7 +209,9 @@ export default function DashboardPage() {
                   ))}
                   {!loading && items.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="cellEmpty">No hay cotizaciones para reactivar hoy.</td>
+                      <td colSpan={4} className="cellEmpty">
+                        {period === "week" ? "No hay reactivaciones previstas para esta semana." : "No hay reactivaciones previstas para este mes."}
+                      </td>
                     </tr>
                   ) : null}
                 </tbody>
@@ -190,6 +224,7 @@ export default function DashboardPage() {
         <div className="dashboardColRight">
           <div className="dashboardSection" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
             <h3 style={{ margin: "0 0 16px 0", fontSize: "16px", fontWeight: 600 }}>Notas</h3>
+            <div className="hint" style={{ marginBottom: 12 }}>Tus notas quedan guardadas por usuario.</div>
             <NotesWidget />
           </div>
 

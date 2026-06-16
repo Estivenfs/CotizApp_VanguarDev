@@ -1,4 +1,5 @@
 import express from "express";
+import path from "node:path";
 import { pool } from "./config/database.js";
 import { login } from "./controllers/auth.controller.js";
 import { authMiddleware } from "./middlewares/auth.middleware.js";
@@ -6,6 +7,7 @@ import { roleMiddleware } from "./middlewares/role.middleware.js";
 import { authRouter } from "./routes/auth.routes.js";
 import { clientRouter } from "./routes/client.routes.js";
 import { companyRouter } from "./routes/company.routes.js";
+import { dashboardRouter } from "./routes/dashboard.routes.js";
 import { productRouter } from "./routes/product.routes.js";
 import { quoteRouter } from "./routes/quote.routes.js";
 import { configRouter } from "./routes/config.routes.js";
@@ -41,6 +43,7 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
 
 app.get("/health", (_req, res) => {
   res.json({ ok: true });
@@ -61,6 +64,12 @@ app.get("/health/db", async (_req, res) => {
 
 app.post("/login", login);
 app.use("/api/auth", authRouter);
+app.use(
+  "/api/dashboard",
+  authMiddleware,
+  roleMiddleware(["Admin", "Vendedor"]),
+  dashboardRouter
+);
 app.use(
   "/api/clients",
   authMiddleware,

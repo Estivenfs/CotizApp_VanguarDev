@@ -1,9 +1,12 @@
 import type { Request, Response } from "express";
+import { getActiveCatalogOptionByValue } from "../models/config.model.js";
 import {
+  createClientContact,
   createClient,
   deleteClient,
   findDuplicateClient,
   getClientById,
+  listClientContacts,
   listClients,
   updateClient
 } from "../models/client.model.js";
@@ -25,6 +28,24 @@ function toNullableString(value: unknown) {
   }
   const trimmed = value.trim();
   return trimmed.length ? trimmed : null;
+}
+
+function toValidIsoDateTime(value: unknown) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const date = new Date(trimmed);
+  if (!Number.isFinite(date.getTime())) {
+    return null;
+  }
+
+  return date.toISOString();
 }
 
 export async function listClientsHandler(req: Request, res: Response) {
@@ -91,6 +112,14 @@ export async function createClientHandler(req: Request, res: Response) {
   if (!isValidEmail(email)) {
     res.status(400).json({ ok: false, error: "email_invalido" });
     return;
+  }
+
+  if (clasificacion) {
+    const option = await getActiveCatalogOptionByValue(companyId, "tipo_cliente", clasificacion);
+    if (!option) {
+      res.status(400).json({ ok: false, error: "clasificacion_invalida" });
+      return;
+    }
   }
 
   const duplicate = await findDuplicateClient(companyId, { nombre_empresa, cuit_tax_id });
@@ -161,6 +190,14 @@ export async function updateClientHandler(req: Request, res: Response) {
     return;
   }
 
+  if (clasificacion) {
+    const option = await getActiveCatalogOptionByValue(companyId, "tipo_cliente", clasificacion);
+    if (!option) {
+      res.status(400).json({ ok: false, error: "clasificacion_invalida" });
+      return;
+    }
+  }
+
   const duplicate = await findDuplicateClient(companyId, { nombre_empresa, cuit_tax_id }, id);
   if (duplicate) {
     res.status(409).json({ ok: false, error: duplicate });
@@ -204,4 +241,80 @@ export async function deleteClientHandler(req: Request, res: Response) {
   }
 
   res.status(204).send();
+}
+
+export async function listClientContactsHandler(req: Request, res: Response) {
+  const clientId = parseNumericId(req.params.id);
+  if (!clientId) {
+    res.status(400).json({ ok: false, error: "invalid_id" });
+    return;
+  }
+
+  const companyId = getScopedCompanyId(req);
+  const client = await getClientById(clientId, companyId);
+  if (!client) {
+    res.status(404).json({ ok: false, error: "not_found" });
+    return;
+  }
+
+  const items = await listClientContacts(clientId, companyId);
+  res.json({
+    ok: true,
+    items: items.map((item) => ({
+      ...item,
+      id: Number(item.id),
+      id_empresa: Number(item.id_empresa),
+      id_cliente: Number(item.id_cliente),
+      id_usuario: Number(item.id_usuario)
+    }))
+  });
+}
+
+export async function createClientContactHandler(req: Request, res: Response) {
+  const clientId = parseNumericId(req.params.id);
+  const companyId = getCompanyIdForWrite(req);
+  if (!req.user) {
+    res.status(401).json({ ok: false, error: "unauthorized" });
+    return;
+  }
+  if (!clientId) {
+    res.status(400).json({ ok: false, error: "invalid_id" });
+    return;
+  }
+  if (!companyId) {
+    res.status(400).json({ ok: false, error: "empresa_requerida" });
+    return;
+  }
+
+  const fechaContacto = toValidIsoDateTime(req.body?.fecha_contacto);
+  if (!fechaContacto) {
+    res.status(400).json({ ok: false, error: "fecha_contacto_invalida" });
+    return;
+  }
+
+  const observacion = toNullableString(req.body?.observacion);
+
+  const item = await createClientContact({
+    companyId,
+    clientId,
+    userId: req.user.id,
+    fechaContacto,
+    observacion
+  });
+
+  if (!item) {
+    res.status(404).json({ ok: false, error: "not_found" });
+    return;
+  }
+
+  res.status(201).json({
+    ok: true,
+    item: {
+      ...item,
+      id: Number(item.id),
+      id_empresa: Number(item.id_empresa),
+      id_cliente: Number(item.id_cliente),
+      id_usuario: Number(item.id_usuario)
+    }
+  });
 }

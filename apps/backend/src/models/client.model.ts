@@ -32,6 +32,17 @@ export type ClientInput = {
   ult_contacto: Date | string | null;
 };
 
+export type ClientContactRow = {
+  id: string | number;
+  id_empresa: string | number;
+  id_cliente: string | number;
+  id_usuario: string | number;
+  fecha_carga: Date | string;
+  fecha_contacto: Date | string;
+  observacion: string | null;
+  usuario_nombre: string;
+};
+
 type DuplicateClientResult = "duplicate_nombre_empresa" | "duplicate_cuit_tax_id" | null;
 
 export async function listClients(companyId?: number | null) {
@@ -211,4 +222,102 @@ export async function deleteClient(id: number, companyId?: number | null) {
     values
   );
   return (result.rows[0]?.id ?? null) !== null;
+}
+
+export async function listClientContacts(clientId: number, companyId?: number | null) {
+  const values: unknown[] = [clientId];
+  const companySql =
+    companyId !== undefined && companyId !== null
+      ? (() => {
+          values.push(companyId);
+          return `and cc.id_empresa = $${values.length}`;
+        })()
+      : "";
+
+  const result = await pool.query<ClientContactRow>(
+    `
+      select
+        cc.id,
+        cc.id_empresa,
+        cc.id_cliente,
+        cc.id_usuario,
+        cc.fecha_carga,
+        cc.fecha_contacto,
+        cc.observacion,
+        u.nombre as usuario_nombre
+      from cliente_contactos cc
+      join usuarios u on u.id = cc.id_usuario
+      where cc.id_cliente = $1
+        ${companySql}
+      order by cc.fecha_contacto desc, cc.id desc
+    `,
+    values
+  );
+
+  return result.rows;
+}
+
+export async function createClientContact(input: {
+  companyId: number;
+  clientId: number;
+  userId: number;
+  fechaContacto: string;
+  observacion: string | null;
+}) {
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+
+    const clientResult = await client.query<{ id: string | number }>(
+      `
+        select id
+        from clientes
+        where id = $1 and id_empresa = $2
+        limit 1
+      `,
+      [input.clientId, input.companyId]
+    );
+
+    if (!clientResult.rows[0]) {
+      await client.query("rollback");
+      return null;
+    }
+
+    const insertResult = await client.query<ClientContactRow>(
+      `
+        insert into cliente_contactos (id_empresa, id_cliente, id_usuario, fecha_contacto, observacion)
+        values ($1, $2, $3, $4::timestamptz, $5)
+        returning
+          id,
+          id_empresa,
+          id_cliente,
+          id_usuario,
+          fecha_carga,
+          fecha_contacto,
+          observacion,
+          (select nombre from usuarios where id = $3) as usuario_nombre
+      `,
+      [input.companyId, input.clientId, input.userId, input.fechaContacto, input.observacion]
+    );
+
+    await client.query(
+      `
+        update clientes
+        set ult_contacto = case
+          when ult_contacto is null or ult_contacto < $3::timestamptz then $3::timestamptz
+          else ult_contacto
+        end
+        where id = $1 and id_empresa = $2
+      `,
+      [input.clientId, input.companyId, input.fechaContacto]
+    );
+
+    await client.query("commit");
+    return insertResult.rows[0];
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
 }

@@ -94,6 +94,26 @@ Ejecutar:
 npm run init -w @cotizapp/backend
 ```
 
+## Criterios del Dashboard
+
+El dashboard principal usa estos criterios funcionales:
+
+- Ventana temporal de KPIs: los indicadores muestran siempre los **ultimos 30 dias**, no el mes calendario actual.
+- `Clientes contactados`: cuenta la cantidad de clientes cuya fecha `ult_contacto` cae dentro de los ultimos 30 dias.
+- `Cotizaciones enviadas`: cuenta la cantidad de cotizaciones enviadas dentro de los ultimos 30 dias.
+- `Ventas cerradas`: cuenta la cantidad de cotizaciones cuyo estado pasó a `CERRADA_GANADA` dentro de los ultimos 30 dias.
+- Alcance de empresa: los KPIs del dashboard se calculan **por empresa**.
+- Notas: las notas del dashboard se guardan **por usuario**. Cada usuario ve y administra sus propias notas.
+
+Comparación visual de variación:
+
+- El porcentaje o variación mostrado en cada KPI compara los ultimos 30 dias contra los 30 dias inmediatamente anteriores.
+
+Persistencia:
+
+- Las notas del dashboard se persisten en base de datos.
+- Los contactos registrados sobre clientes actualizan `ult_contacto`, lo que impacta en el KPI de `Clientes contactados`.
+
 ## Iniciar la aplicación
 
 ### Backend

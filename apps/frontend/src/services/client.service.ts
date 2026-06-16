@@ -1,5 +1,5 @@
 import { apiRequest } from "./apiClient";
-import type { Client } from "../types";
+import type { Client, ClientContact } from "../types";
 
 export async function listClients() {
   const result = await apiRequest<{ ok: true; items: Client[] }>({ path: "/api/clients" });
@@ -34,4 +34,23 @@ export async function deleteClient(id: number) {
     path: `/api/clients/${id}`,
     method: "DELETE"
   });
+}
+
+export async function listClientContacts(id: number) {
+  const result = await apiRequest<{ ok: true; items: ClientContact[] }>({
+    path: `/api/clients/${id}/contacts`
+  });
+  return result.items;
+}
+
+export async function createClientContact(
+  id: number,
+  input: { fecha_contacto: string; observacion?: string | null }
+) {
+  const result = await apiRequest<{ ok: true; item: ClientContact }>({
+    path: `/api/clients/${id}/contacts`,
+    method: "POST",
+    body: input
+  });
+  return result.item;
 }

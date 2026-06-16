@@ -45,6 +45,10 @@ export function ClientsList() {
   const [estadoFilter, setEstadoFilter] = useState("");
   const [statusModalClient, setStatusModalClient] = useState<Client | null>(null);
   const [newStatus, setNewStatus] = useState("Activo");
+  const [contactModalClient, setContactModalClient] = useState<Client | null>(null);
+  const [contactDateTime, setContactDateTime] = useState("");
+  const [contactObservation, setContactObservation] = useState("");
+  const [savingContact, setSavingContact] = useState(false);
   const navigate = useNavigate();
   const { showToast } = useToast();
 
@@ -53,7 +57,9 @@ export function ClientsList() {
     duplicate_cuit_tax_id: "Ya existe un cliente con ese CUIT / CUIL en esta empresa.",
     cuit_tax_id_required: "El CUIT / CUIL es obligatorio.",
     email_invalido: "Ingresá un email válido.",
-    estado_invalido: "El estado seleccionado no es válido."
+    clasificacion_invalida: "El tipo de cliente seleccionado no es válido o está inactivo.",
+    estado_invalido: "El estado seleccionado no es válido.",
+    fecha_contacto_invalida: "Ingresá una fecha y hora de contacto válidas."
   };
 
   async function reload() {
@@ -114,6 +120,45 @@ export function ClientsList() {
       showToast({ type: "success", text: "Estado del cliente actualizado" });
     } catch (err) {
       setError(getErrorMessage(err, errorMessages, "No se pudo actualizar el estado del cliente"));
+    }
+  }
+
+  async function handleRegisterContact() {
+    if (!contactModalClient) return;
+    if (!contactDateTime) {
+      setError("Ingresá una fecha y hora para el contacto.");
+      return;
+    }
+
+    setSavingContact(true);
+    setError(null);
+    try {
+      const created = await clientService.createClientContact(contactModalClient.id, {
+        fecha_contacto: new Date(contactDateTime).toISOString(),
+        observacion: contactObservation.trim() || null
+      });
+
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === contactModalClient.id
+            ? {
+                ...item,
+                ult_contacto:
+                  !item.ult_contacto || new Date(item.ult_contacto).getTime() < new Date(created.fecha_contacto).getTime()
+                    ? created.fecha_contacto
+                    : item.ult_contacto
+              }
+            : item
+        )
+      );
+      setContactModalClient(null);
+      setContactDateTime("");
+      setContactObservation("");
+      showToast({ type: "success", text: "Contacto registrado correctamente" });
+    } catch (err) {
+      setError(getErrorMessage(err, errorMessages, "No se pudo registrar el contacto"));
+    } finally {
+      setSavingContact(false);
     }
   }
 
@@ -217,13 +262,23 @@ export function ClientsList() {
                     {statusMeta.label}
                   </span>
                 </td>
-                <td>{c.ult_contacto ? new Date(c.ult_contacto).toLocaleDateString() : "17/04/2026"}</td>
+                <td>{c.ult_contacto ? new Date(c.ult_contacto).toLocaleDateString("es-AR") : "-"}</td>
                 <td className="tableActionsCell">
                   <ActionMenu
                     items={[
                       {
                         label: "Editar",
                         onClick: () => navigate(`/clients/${c.id}/edit`)
+                      },
+                      {
+                        label: "Registrar contacto",
+                        onClick: () => {
+                          const now = new Date();
+                          const offsetMs = now.getTimezoneOffset() * 60_000;
+                          setContactDateTime(new Date(now.getTime() - offsetMs).toISOString().slice(0, 16));
+                          setContactObservation("");
+                          setContactModalClient(c);
+                        }
                       },
                       {
                         label: "Cambiar Estado",
@@ -271,6 +326,46 @@ export function ClientsList() {
           </div>
         </div>,
         document.body
+      ) : null}
+
+      {contactModalClient ? (
+        <div className="modalOverlay" onClick={() => (savingContact ? null : setContactModalClient(null))}>
+          <div className="modalContent" onClick={(event) => event.stopPropagation()}>
+            <h3>Registrar contacto</h3>
+            <p>{contactModalClient.nombre_empresa}</p>
+            <div className="modalField">
+              <label className="label" htmlFor="contactDateTime">Fecha y hora del contacto</label>
+              <input
+                id="contactDateTime"
+                type="datetime-local"
+                className="input modalControl"
+                value={contactDateTime}
+                onChange={(event) => setContactDateTime(event.target.value)}
+                disabled={savingContact}
+              />
+            </div>
+            <div className="modalField">
+              <label className="label" htmlFor="contactObservation">Observación</label>
+              <textarea
+                id="contactObservation"
+                className="textarea modalControl"
+                rows={4}
+                placeholder="Ej: Se confirmó interés, pidió nueva cotización, quedó pendiente seguimiento."
+                value={contactObservation}
+                onChange={(event) => setContactObservation(event.target.value)}
+                disabled={savingContact}
+              />
+            </div>
+            <div className="modalActions">
+              <Button onClick={() => setContactModalClient(null)} className="btn--ghost" disabled={savingContact}>
+                Cancelar
+              </Button>
+              <Button onClick={() => void handleRegisterContact()} className="btn--primary" disabled={savingContact}>
+                {savingContact ? "Guardando..." : "Guardar"}
+              </Button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </div>
   );
