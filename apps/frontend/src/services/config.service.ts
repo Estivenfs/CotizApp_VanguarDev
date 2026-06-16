@@ -69,3 +69,11 @@ export async function deactivateCatalogOption(id: number) {
   });
   return data.item;
 }
+
+export async function activateCatalogOption(id: number) {
+  const data = await apiRequest<{ ok: true; item: CatalogOption }>({
+    path: `/api/config/catalog/options/${id}/activate`,
+    method: "PATCH"
+  });
+  return data.item;
+}

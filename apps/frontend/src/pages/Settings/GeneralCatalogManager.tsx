@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../components/common/Button";
+import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import type { CatalogOption, CatalogOptionType } from "../../types";
 import * as configService from "../../services/config.service";
 
@@ -46,6 +47,13 @@ export function GeneralCatalogManager() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    confirmTone: "default" | "danger";
+    onConfirm: () => void | Promise<void>;
+  } | null>(null);
   const [drafts, setDrafts] = useState<DraftState>({
     forma_pago: { label: "", value: "" },
     lugar_entrega: { label: "", value: "" },
@@ -127,18 +135,48 @@ export function GeneralCatalogManager() {
     }
   }
 
-  async function handleDeactivate(id: number) {
-    if (!window.confirm("¿Desactivar opción? Ya no se ofrecerá en nuevas cotizaciones.")) return;
-    setSaving(true);
-    setError(null);
-    try {
-      await configService.deactivateCatalogOption(id);
-      await loadItems();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "error_desactivando_catalogo");
-    } finally {
-      setSaving(false);
-    }
+  function requestDeactivate(id: number) {
+    setConfirm({
+      title: "Desactivar opción",
+      message: "Ya no se ofrecerá en nuevas cotizaciones.",
+      confirmLabel: "Desactivar",
+      confirmTone: "danger",
+      onConfirm: async () => {
+        setConfirm(null);
+        setSaving(true);
+        setError(null);
+        try {
+          await configService.deactivateCatalogOption(id);
+          await loadItems();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "error_desactivando_catalogo");
+        } finally {
+          setSaving(false);
+        }
+      }
+    });
+  }
+
+  function requestActivate(id: number) {
+    setConfirm({
+      title: "Activar opción",
+      message: "Volverá a ofrecerse en nuevas cotizaciones.",
+      confirmLabel: "Activar",
+      confirmTone: "default",
+      onConfirm: async () => {
+        setConfirm(null);
+        setSaving(true);
+        setError(null);
+        try {
+          await configService.activateCatalogOption(id);
+          await loadItems();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "error_activando_catalogo");
+        } finally {
+          setSaving(false);
+        }
+      }
+    });
   }
 
   return (
@@ -288,12 +326,20 @@ export function GeneralCatalogManager() {
                                   {item.activo ? (
                                     <Button
                                       className="btn--sm btn--danger"
-                                      onClick={() => void handleDeactivate(item.id)}
+                                      onClick={() => requestDeactivate(item.id)}
                                       disabled={saving}
                                     >
                                       Desactivar
                                     </Button>
-                                  ) : null}
+                                  ) : (
+                                    <Button
+                                      className="btn--sm btn--primary"
+                                      onClick={() => requestActivate(item.id)}
+                                      disabled={saving}
+                                    >
+                                      Activar
+                                    </Button>
+                                  )}
                                 </>
                               )}
                             </div>
@@ -315,6 +361,17 @@ export function GeneralCatalogManager() {
           );
         })}
       </div>
+
+      <ConfirmDialog
+        open={Boolean(confirm)}
+        title={confirm?.title ?? ""}
+        message={confirm?.message ?? ""}
+        confirmLabel={confirm?.confirmLabel ?? "Confirmar"}
+        confirmTone={confirm?.confirmTone ?? "danger"}
+        loading={saving}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => confirm?.onConfirm()}
+      />
     </>
   );
 }

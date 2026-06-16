@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Button } from "../../components/common/Button";
+import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import { useAuth } from "../../context/AuthContext";
 import type { Company, ManagedUser, UserRole } from "../../types";
 import * as companyService from "../../services/company.service";
@@ -100,6 +101,13 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [confirm, setConfirm] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    confirmTone: "default" | "danger";
+    onConfirm: () => void | Promise<void>;
+  } | null>(null);
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -220,7 +228,7 @@ export default function SettingsPage() {
     );
   }, [companies, searchQuery]);
 
-  async function handleSaveSettings(e: React.FormEvent) {
+  async function handleSave() {
     setMessage(null);
     const val = parseFloat(exchangeRate.replace(",", "."));
     if (isNaN(val) || val <= 0) {
@@ -279,18 +287,26 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleDeactivateCompany(id: number) {
-    if (!window.confirm("¿Desactivar empresa? No se elimina, solo queda inactiva.")) return;
-    setCompanySaving(true);
-    setCompaniesError(null);
-    try {
-      await companyService.deactivateCompany(id);
-      await loadCompanies();
-    } catch (err) {
-      setCompaniesError(err instanceof Error ? err.message : "error_desactivando_empresa");
-    } finally {
-      setCompanySaving(false);
-    }
+  function handleDeactivateCompany(id: number) {
+    setConfirm({
+      title: "Desactivar empresa",
+      message: "No se elimina, solo queda inactiva.",
+      confirmLabel: "Desactivar",
+      confirmTone: "danger",
+      onConfirm: async () => {
+        setConfirm(null);
+        setCompanySaving(true);
+        setCompaniesError(null);
+        try {
+          await companyService.deactivateCompany(id);
+          await loadCompanies();
+        } catch (err) {
+          setCompaniesError(err instanceof Error ? err.message : "error_desactivando_empresa");
+        } finally {
+          setCompanySaving(false);
+        }
+      }
+    });
   }
 
   function openEditUser(item: ManagedUser) {
@@ -401,32 +417,48 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleDeactivateUser(id: number) {
-    if (!window.confirm("¿Desactivar usuario? No se elimina, solo queda inactivo.")) return;
-    setUserSaving(true);
-    setUsersError(null);
-    try {
-      await userAdminService.deactivateUser(id);
-      await loadUsers();
-    } catch (err) {
-      setUsersError(err instanceof Error ? err.message : "error_desactivando_usuario");
-    } finally {
-      setUserSaving(false);
-    }
+  function handleDeactivateUser(id: number) {
+    setConfirm({
+      title: "Desactivar usuario",
+      message: "No se elimina, solo queda inactivo.",
+      confirmLabel: "Desactivar",
+      confirmTone: "danger",
+      onConfirm: async () => {
+        setConfirm(null);
+        setUserSaving(true);
+        setUsersError(null);
+        try {
+          await userAdminService.deactivateUser(id);
+          await loadUsers();
+        } catch (err) {
+          setUsersError(err instanceof Error ? err.message : "error_desactivando_usuario");
+        } finally {
+          setUserSaving(false);
+        }
+      }
+    });
   }
 
-  async function handleUnlockUser(id: number) {
-    if (!window.confirm("¿Desbloquear usuario y resetear intentos fallidos?")) return;
-    setUserSaving(true);
-    setUsersError(null);
-    try {
-      await userAdminService.unlockUser(id);
-      await loadUsers();
-    } catch (err) {
-      setUsersError(err instanceof Error ? err.message : "error_desbloqueando_usuario");
-    } finally {
-      setUserSaving(false);
-    }
+  function handleUnlockUser(id: number) {
+    setConfirm({
+      title: "Desbloquear usuario",
+      message: "Se resetearán los intentos fallidos y se quitará el bloqueo.",
+      confirmLabel: "Desbloquear",
+      confirmTone: "default",
+      onConfirm: async () => {
+        setConfirm(null);
+        setUserSaving(true);
+        setUsersError(null);
+        try {
+          await userAdminService.unlockUser(id);
+          await loadUsers();
+        } catch (err) {
+          setUsersError(err instanceof Error ? err.message : "error_desbloqueando_usuario");
+        } finally {
+          setUserSaving(false);
+        }
+      }
+    });
   }
 
   if (loading && !isSuperAdmin) {
@@ -1063,6 +1095,17 @@ export default function SettingsPage() {
           </div>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={Boolean(confirm)}
+        title={confirm?.title ?? ""}
+        message={confirm?.message ?? ""}
+        confirmLabel={confirm?.confirmLabel ?? "Confirmar"}
+        confirmTone={confirm?.confirmTone ?? "danger"}
+        loading={companySaving || userSaving || saving}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => confirm?.onConfirm()}
+      />
         </div>
       </div>
     </div>

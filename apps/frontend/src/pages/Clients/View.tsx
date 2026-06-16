@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useLocation } from "react-router-dom";
 import { Button } from "../../components/common/Button";
+import { ConfirmDialog } from "../../components/common/ConfirmDialog";
 import { useToast } from "../../context/ToastContext";
 import * as clientService from "../../services/client.service";
 import type { Client } from "../../types";
@@ -89,6 +90,8 @@ export function ClientView() {
   
   const [client, setClient] = useState<Client | null>(stateClient || null);
   const [loading, setLoading] = useState(!stateClient);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { showToast } = useToast();
 
@@ -213,21 +216,42 @@ export function ClientView() {
               <div className="viewActions">
                 <Button className="btn--icon" data-tooltip="Nueva cotización"><PlusIcon /></Button>
                 <Button className="btn--icon" data-tooltip="Editar cliente"><EditIcon /></Button>
-                <Button className="btn--icon" data-tooltip="Eliminar cliente" onClick={async () => {
-                  if (!window.confirm("¿Seguro que deseas eliminar este cliente?")) return;
-                  try {
-                    await clientService.deleteClient(client.id);
-                    showToast({ type: "success", text: "Cliente eliminado correctamente" });
-                    navigate("/clients");
-                  } catch (err) {
-                    setError(getErrorMessage(err, {}, "No se pudo eliminar el cliente"));
-                  }
-                }}><TrashIcon /></Button>
+                <Button
+                  className="btn--icon"
+                  data-tooltip="Eliminar cliente"
+                  onClick={() => setConfirmDeleteOpen(true)}
+                >
+                  <TrashIcon />
+                </Button>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title="Eliminar cliente"
+        message="¿Seguro que deseas eliminar este cliente?"
+        confirmLabel="Eliminar"
+        confirmTone="danger"
+        loading={deleting}
+        onCancel={() => setConfirmDeleteOpen(false)}
+        onConfirm={async () => {
+          setDeleting(true);
+          setError(null);
+          try {
+            await clientService.deleteClient(client.id);
+            showToast({ type: "success", text: "Cliente eliminado correctamente" });
+            navigate("/clients");
+          } catch (err) {
+            setError(getErrorMessage(err, {}, "No se pudo eliminar el cliente"));
+          } finally {
+            setDeleting(false);
+            setConfirmDeleteOpen(false);
+          }
+        }}
+      />
     </div>
   );
 }

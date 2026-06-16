@@ -147,6 +147,37 @@ configRouter.patch("/catalog/options/:id/deactivate", async (req, res) => {
   }
 });
 
+configRouter.patch("/catalog/options/:id/activate", async (req, res) => {
+  try {
+    const companyId = getScopedCompanyId(req);
+    if (!companyId) {
+      return res.status(400).json({ error: "empresa_requerida" });
+    }
+
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ error: "invalid_id" });
+    }
+
+    const item = await configModel.updateCatalogOption(id, companyId, { activo: true });
+    if (!item) {
+      return res.status(404).json({ error: "not_found" });
+    }
+
+    res.json({
+      ok: true,
+      item: {
+        ...item,
+        id: Number(item.id),
+        id_empresa: Number(item.id_empresa)
+      }
+    });
+  } catch (error) {
+    console.error("PATCH /config/catalog/options/:id/activate error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /api/config/:clave
 configRouter.get("/:clave", async (req, res) => {
   try {
