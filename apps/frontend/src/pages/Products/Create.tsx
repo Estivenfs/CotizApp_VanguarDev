@@ -10,6 +10,55 @@ import { getErrorMessage } from "../../utils/feedback";
 import "../../styles/products.css";
 
 type ProductDraft = Omit<Product, "id">;
+type WarrantyUnit = "sin_garantia" | "dia" | "mes" | "anio";
+
+function parseWarranty(value: string | null | undefined): { quantity: string; unit: WarrantyUnit } {
+  const raw = value?.trim();
+  if (!raw) {
+    return { quantity: "", unit: "sin_garantia" };
+  }
+
+  const normalized = raw.toLowerCase();
+  if (normalized === "sin garantia" || normalized === "sin garantía") {
+    return { quantity: "", unit: "sin_garantia" };
+  }
+
+  const match = normalized.match(/^(\d+)\s+(dia|dias|día|días|mes|meses|año|años|ano|anos)$/i);
+  if (!match) {
+    return { quantity: "", unit: "sin_garantia" };
+  }
+
+  const [, quantity, unitText] = match;
+  const unit: WarrantyUnit =
+    unitText === "dia" || unitText === "dias" || unitText === "día" || unitText === "días"
+      ? "dia"
+      : unitText === "mes" || unitText === "meses"
+      ? "mes"
+      : "anio";
+
+  return { quantity, unit };
+}
+
+function buildWarranty(quantity: string, unit: WarrantyUnit) {
+  if (unit === "sin_garantia") {
+    return "Sin garantía";
+  }
+
+  const parsed = Number.parseInt(quantity.trim(), 10);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  if (unit === "dia") {
+    return `${parsed} ${parsed === 1 ? "Día" : "Días"}`;
+  }
+
+  if (unit === "mes") {
+    return `${parsed} ${parsed === 1 ? "Mes" : "Meses"}`;
+  }
+
+  return `${parsed} ${parsed === 1 ? "Año" : "Años"}`;
+}
 
 const emptyDraft: ProductDraft = {
   nombre: "",
@@ -18,7 +67,7 @@ const emptyDraft: ProductDraft = {
   stock: 0,
   precio_ars: "",
   precio_usd: "",
-  garantia: "12 meses",
+  garantia: "12 Meses",
   estado: "Activo"
 };
 
@@ -36,6 +85,8 @@ export function ProductCreate() {
   const isEditMode = Boolean(id);
   const [draft, setDraft] = useState<ProductDraft>(emptyDraft);
   const [stockInput, setStockInput] = useState("");
+  const [warrantyQuantity, setWarrantyQuantity] = useState("12");
+  const [warrantyUnit, setWarrantyUnit] = useState<WarrantyUnit>("mes");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -70,6 +121,9 @@ export function ProductCreate() {
           ...rest
         });
         setStockInput(product.stock === -1 ? "" : String(product.stock));
+        const warranty = parseWarranty(product.garantia);
+        setWarrantyQuantity(warranty.quantity || "12");
+        setWarrantyUnit(warranty.unit);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al cargar producto");
       } finally {
@@ -134,6 +188,12 @@ export function ProductCreate() {
       return;
     }
 
+    const garantia = buildWarranty(warrantyQuantity, warrantyUnit);
+    if (!garantia) {
+      setError("La garantía debe tener una cantidad entera mayor a 0");
+      return;
+    }
+
     setLoading(true);
     try {
       const payload = {
@@ -141,7 +201,8 @@ export function ProductCreate() {
         nombre,
         precio_ars: ars.toString(),
         precio_usd: usd.toString(),
-        stock: stockParsed
+        stock: stockParsed,
+        garantia
       };
 
       if (isEditMode && id) {
@@ -213,16 +274,28 @@ export function ProductCreate() {
 
           <label className="field">
             <span className="label">Garantía</span>
-            <select
-              value={draft.garantia ?? ""}
-              onChange={(e) => setDraft((d) => ({ ...d, garantia: e.target.value }))}
-              className="select"
-            >
-              <option value="Sin garantía">Sin garantía</option>
-              <option value="6 meses">6 meses</option>
-              <option value="12 meses">12 meses</option>
-              <option value="24 meses">24 meses</option>
-            </select>
+            <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 12 }}>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={warrantyUnit === "sin_garantia" ? "" : warrantyQuantity}
+                onChange={(e) => setWarrantyQuantity(e.target.value)}
+                className="input"
+                placeholder="Cantidad"
+                disabled={warrantyUnit === "sin_garantia"}
+              />
+              <select
+                value={warrantyUnit}
+                onChange={(e) => setWarrantyUnit(e.target.value as WarrantyUnit)}
+                className="select"
+              >
+                <option value="sin_garantia">Sin garantía</option>
+                <option value="dia">Día</option>
+                <option value="mes">Mes</option>
+                <option value="anio">Año</option>
+              </select>
+            </div>
           </label>
 
           <label className="field" style={{ gridColumn: "1 / -1" }}>
