@@ -69,6 +69,7 @@ export default function SettingsPage() {
 
   const isSuperAdmin = user?.rol === "SuperAdmin";
   const canManageUsers = user?.rol === "SuperAdmin" || user?.rol === "Admin";
+  const canManageQuoteCatalogs = user?.rol === "Admin";
 
   const tabs = useMemo(() => {
     const items: Array<{ key: TabKey; label: string }> = [];
@@ -528,14 +529,23 @@ export default function SettingsPage() {
         <div className="stack">
           <div>
             <h2 style={{ fontSize: "1.5rem", margin: "0 0 8px 0" }}>Ajustes de Cotización</h2>
-            <p className="hint" style={{ margin: "0 0 24px 0" }}>Configurá la tasa de cambio y las opciones predeterminadas para los catálogos y atributos de las cotizaciones.</p>
+            <p className="hint" style={{ margin: "0 0 24px 0" }}>
+              {canManageQuoteCatalogs
+                ? "Configurá la tasa de cambio y las opciones predeterminadas para los catálogos y atributos de las cotizaciones."
+                : "Como vendedor, solo podés configurar la tasa de cambio. Los demás catálogos quedan reservados para administradores."}
+            </p>
             
             {/* Navigation Pills */}
             <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "12px", msOverflowStyle: "none", scrollbarWidth: "none" }} className="hide-scrollbar">
               <button onClick={() => document.getElementById("section-moneda")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Moneda y Cotización</button>
-              <button onClick={() => document.getElementById("section-forma_pago")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Forma de Pago</button>
-              <button onClick={() => document.getElementById("section-lugar_entrega")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Lugar de Entrega</button>
-              <button onClick={() => document.getElementById("section-tipo_iva")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Tipo de IVA</button>
+              {canManageQuoteCatalogs ? (
+                <>
+                  <button onClick={() => document.getElementById("section-forma_pago")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Forma de Pago</button>
+                  <button onClick={() => document.getElementById("section-lugar_entrega")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Lugar de Entrega</button>
+                  <button onClick={() => document.getElementById("section-tipo_cliente")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Tipo de Cliente</button>
+                  <button onClick={() => document.getElementById("section-tipo_iva")?.scrollIntoView({ behavior: "smooth" })} style={{ padding: "8px 16px", borderRadius: "20px", border: "1px solid var(--border)", background: "var(--surface)", cursor: "pointer", whiteSpace: "nowrap", fontWeight: 500 }}>Tipo de IVA</button>
+                </>
+              ) : null}
             </div>
           </div>
 
@@ -576,7 +586,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <GeneralCatalogManager />
+          {canManageQuoteCatalogs ? <GeneralCatalogManager /> : null}
         </div>
       ) : null}
 

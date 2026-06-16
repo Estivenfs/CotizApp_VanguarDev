@@ -1,11 +1,13 @@
 import { Router } from "express";
+import type { Request, Response } from "express";
 import * as configModel from "../models/config.model.js";
+import { canManageUsers } from "../utils/access.js";
 import { getScopedCompanyId } from "../utils/request-scope.js";
 
 export const configRouter = Router();
 
 function isCatalogType(value: unknown): value is configModel.CatalogOptionType {
-  return value === "forma_pago" || value === "lugar_entrega" || value === "tipo_iva";
+  return value === "forma_pago" || value === "lugar_entrega" || value === "tipo_iva" || value === "tipo_cliente";
 }
 
 function toNonEmptyString(value: unknown) {
@@ -14,6 +16,14 @@ function toNonEmptyString(value: unknown) {
   }
   const trimmed = value.trim();
   return trimmed.length ? trimmed : null;
+}
+
+function ensureAdminCatalogAccess(req: Request, res: Response) {
+  if (!req.user || !canManageUsers(req.user)) {
+    res.status(403).json({ error: "forbidden" });
+    return false;
+  }
+  return true;
 }
 
 configRouter.get("/catalog/options", async (req, res) => {
@@ -42,6 +52,10 @@ configRouter.get("/catalog/options", async (req, res) => {
 
 configRouter.post("/catalog/options", async (req, res) => {
   try {
+    if (!ensureAdminCatalogAccess(req, res)) {
+      return;
+    }
+
     const companyId = getScopedCompanyId(req);
     if (!companyId) {
       return res.status(400).json({ error: "empresa_requerida" });
@@ -72,6 +86,10 @@ configRouter.post("/catalog/options", async (req, res) => {
 
 configRouter.put("/catalog/options/:id", async (req, res) => {
   try {
+    if (!ensureAdminCatalogAccess(req, res)) {
+      return;
+    }
+
     const companyId = getScopedCompanyId(req);
     if (!companyId) {
       return res.status(400).json({ error: "empresa_requerida" });
@@ -118,6 +136,10 @@ configRouter.put("/catalog/options/:id", async (req, res) => {
 
 configRouter.patch("/catalog/options/:id/deactivate", async (req, res) => {
   try {
+    if (!ensureAdminCatalogAccess(req, res)) {
+      return;
+    }
+
     const companyId = getScopedCompanyId(req);
     if (!companyId) {
       return res.status(400).json({ error: "empresa_requerida" });
@@ -149,6 +171,10 @@ configRouter.patch("/catalog/options/:id/deactivate", async (req, res) => {
 
 configRouter.patch("/catalog/options/:id/activate", async (req, res) => {
   try {
+    if (!ensureAdminCatalogAccess(req, res)) {
+      return;
+    }
+
     const companyId = getScopedCompanyId(req);
     if (!companyId) {
       return res.status(400).json({ error: "empresa_requerida" });

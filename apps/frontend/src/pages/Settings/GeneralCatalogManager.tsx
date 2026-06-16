@@ -22,6 +22,12 @@ const sectionMeta: Record<
     valueLabel: "Valor",
     hideValueInput: true
   },
+  tipo_cliente: {
+    title: "Tipo de Cliente",
+    description: "Opciones disponibles para clasificar clientes.",
+    valueLabel: "Valor",
+    hideValueInput: true
+  },
   tipo_iva: {
     title: "Tipo de IVA",
     description: "Define la etiqueta visible y el porcentaje a aplicar.",
@@ -57,6 +63,7 @@ export function GeneralCatalogManager() {
   const [drafts, setDrafts] = useState<DraftState>({
     forma_pago: { label: "", value: "" },
     lugar_entrega: { label: "", value: "" },
+    tipo_cliente: { label: "", value: "" },
     tipo_iva: { label: "", value: "" }
   });
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -84,6 +91,7 @@ export function GeneralCatalogManager() {
     return {
       forma_pago: items.filter((item) => item.tipo === "forma_pago"),
       lugar_entrega: items.filter((item) => item.tipo === "lugar_entrega"),
+      tipo_cliente: items.filter((item) => item.tipo === "tipo_cliente"),
       tipo_iva: items.filter((item) => item.tipo === "tipo_iva")
     } satisfies Record<CatalogOptionType, CatalogOption[]>;
   }, [items]);
@@ -207,7 +215,7 @@ export function GeneralCatalogManager() {
                           [tipo]: { ...prev[tipo], label: e.target.value }
                         }))
                       }
-                      placeholder="Ej: Transferencia Bancaria"
+                      placeholder={tipo === "tipo_cliente" ? "Ej: Mayorista" : "Ej: Transferencia Bancaria"}
                       style={{ background: "var(--surface)" }}
                     />
                   </label>

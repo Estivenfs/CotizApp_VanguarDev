@@ -52,6 +52,7 @@ export function ClientsList() {
     duplicate_cuit_tax_id: "Ya existe un cliente con ese CUIT / CUIL en esta empresa.",
     cuit_tax_id_required: "El CUIT / CUIL es obligatorio.",
     email_invalido: "Ingresá un email válido.",
+    clasificacion_invalida: "El tipo de cliente seleccionado no es válido o está inactivo.",
     estado_invalido: "El estado seleccionado no es válido."
   };
 

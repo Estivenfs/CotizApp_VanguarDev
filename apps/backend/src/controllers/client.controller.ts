@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { getActiveCatalogOptionByValue } from "../models/config.model.js";
 import {
   createClient,
   deleteClient,
@@ -93,6 +94,14 @@ export async function createClientHandler(req: Request, res: Response) {
     return;
   }
 
+  if (clasificacion) {
+    const option = await getActiveCatalogOptionByValue(companyId, "tipo_cliente", clasificacion);
+    if (!option) {
+      res.status(400).json({ ok: false, error: "clasificacion_invalida" });
+      return;
+    }
+  }
+
   const duplicate = await findDuplicateClient(companyId, { nombre_empresa, cuit_tax_id });
   if (duplicate) {
     res.status(409).json({ ok: false, error: duplicate });
@@ -159,6 +168,14 @@ export async function updateClientHandler(req: Request, res: Response) {
   if (!isValidEmail(email)) {
     res.status(400).json({ ok: false, error: "email_invalido" });
     return;
+  }
+
+  if (clasificacion) {
+    const option = await getActiveCatalogOptionByValue(companyId, "tipo_cliente", clasificacion);
+    if (!option) {
+      res.status(400).json({ ok: false, error: "clasificacion_invalida" });
+      return;
+    }
   }
 
   const duplicate = await findDuplicateClient(companyId, { nombre_empresa, cuit_tax_id }, id);

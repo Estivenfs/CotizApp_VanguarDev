@@ -237,6 +237,21 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_configuraciones_empresa_clave
 CREATE UNIQUE INDEX IF NOT EXISTS idx_catalog_options_empresa_tipo_label
   ON empresa_catalog_options (id_empresa, tipo, label);
 
+INSERT INTO empresa_catalog_options (id_empresa, tipo, label, value, activo)
+SELECT e.id, defaults.tipo, defaults.label, defaults.value, true
+FROM empresas e
+CROSS JOIN (
+  VALUES
+    ('tipo_cliente', 'Consumidor Final', 'Consumidor Final'),
+    ('tipo_cliente', 'Cliente final', 'Cliente final'),
+    ('tipo_cliente', 'Distribuidor', 'Distribuidor')
+) AS defaults(tipo, label, value)
+ON CONFLICT (id_empresa, tipo, label)
+DO UPDATE SET
+  value = EXCLUDED.value,
+  activo = true,
+  updated_at = now();
+
 CREATE INDEX IF NOT EXISTS idx_usuarios_id_empresa ON usuarios(id_empresa);
 CREATE INDEX IF NOT EXISTS idx_clientes_id_empresa ON clientes(id_empresa);
 CREATE INDEX IF NOT EXISTS idx_productos_id_empresa ON productos(id_empresa);

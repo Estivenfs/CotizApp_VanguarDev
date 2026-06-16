@@ -1,7 +1,7 @@
 export type UserRole = "SuperAdmin" | "Admin" | "Vendedor";
 
 export type CurrencyCode = "ARS" | "USD";
-export type CatalogOptionType = "forma_pago" | "lugar_entrega" | "tipo_iva";
+export type CatalogOptionType = "forma_pago" | "lugar_entrega" | "tipo_iva" | "tipo_cliente";
 
 export interface User {
   id: number;
