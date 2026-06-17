@@ -13,6 +13,9 @@ import "../../styles/quotes.css"; // assuming there's quotes.css, or just keep l
 
 type QuoteItemDraft = {
   id_producto: string;
+  product_query: string;
+  product_search_open: boolean;
+  product_active_index: number;
   cantidad: string;
   iva_porcentaje: string;
 };
@@ -108,6 +111,9 @@ export default function QuotesCreate() {
   const [info, setInfo] = useState<string | null>(null);
 
   const [idCliente, setIdCliente] = useState<string>("");
+  const [clientQuery, setClientQuery] = useState("");
+  const [clientSearchOpen, setClientSearchOpen] = useState(false);
+  const [activeClientIndex, setActiveClientIndex] = useState(-1);
   const [estado, setEstado] = useState<string>("BORRADOR");
   const [moneda, setMoneda] = useState<CurrencyCode>("ARS");
   const [fechaCotizacion, setFechaCotizacion] = useState<string>(() => {
@@ -128,7 +134,7 @@ export default function QuotesCreate() {
   const [reactivacionActiva, setReactivacionActiva] = useState<1 | 2 | 3>(1);
 
   const [items, setItems] = useState<QuoteItemDraft[]>([
-    { id_producto: "", cantidad: "1", iva_porcentaje: "" }
+    { id_producto: "", product_query: "", product_search_open: false, product_active_index: -1, cantidad: "1", iva_porcentaje: "" }
   ]);
 
   const [notas, setNotas] = useState("");
@@ -165,6 +171,63 @@ export default function QuotesCreate() {
     if (!clientId) return;
     setIdCliente(clientId);
   }, [searchParams]);
+
+  function normalizeSearchText(value: string) {
+    return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("es-AR");
+  }
+
+  const sortedClients = useMemo(
+    () => [...clients].sort((a, b) => a.nombre_empresa.localeCompare(b.nombre_empresa, "es-AR")),
+    [clients]
+  );
+
+  const filteredClients = useMemo(() => {
+    const query = normalizeSearchText(clientQuery);
+    if (!query) {
+      return sortedClients.slice(0, 12);
+    }
+
+    return sortedClients
+      .filter((client) => normalizeSearchText(client.nombre_empresa).includes(query))
+      .slice(0, 12);
+  }, [clientQuery, sortedClients]);
+
+  const sortedProducts = useMemo(
+    () => [...products].sort((a, b) => a.nombre.localeCompare(b.nombre, "es-AR")),
+    [products]
+  );
+
+  function getFilteredProducts(query: string) {
+    const normalized = normalizeSearchText(query);
+    if (!query) {
+      return sortedProducts.slice(0, 12);
+    }
+
+    return sortedProducts
+      .filter((product) => normalizeSearchText(product.nombre).includes(normalized))
+      .slice(0, 12);
+  }
+
+  useEffect(() => {
+    if (filteredClients.length === 0) {
+      setActiveClientIndex(-1);
+      return;
+    }
+
+    setActiveClientIndex((current) => {
+      if (current < 0) return 0;
+      if (current >= filteredClients.length) return filteredClients.length - 1;
+      return current;
+    });
+  }, [filteredClients]);
+
+  useEffect(() => {
+    if (!idCliente) return;
+    const selectedClient = clients.find((client) => String(client.id) === idCliente);
+    if (selectedClient) {
+      setClientQuery(selectedClient.nombre_empresa);
+    }
+  }, [idCliente, clients]);
 
   const formaPagoOptions = useMemo(
     () => catalogOptions.filter((option) => option.tipo === "forma_pago" && option.activo),
@@ -271,6 +334,225 @@ export default function QuotesCreate() {
     [descuentoPorcentajeGlobal]
   );
   const isDiscountValid = discountBpInput !== null && discountBpInput >= 0n && discountBpInput <= 10000n;
+
+  const selectedClient = useMemo(
+    () => clients.find((client) => String(client.id) === idCliente) ?? null,
+    [clients, idCliente]
+  );
+
+  function handleClientQueryChange(value: string) {
+    setClientQuery(value);
+    setClientSearchOpen(true);
+    setActiveClientIndex(0);
+
+    const normalized = normalizeSearchText(value);
+    if (!normalized) {
+      setIdCliente("");
+      return;
+    }
+
+    const exactMatches = clients.filter(
+      (client) => normalizeSearchText(client.nombre_empresa) === normalized
+    );
+
+    if (exactMatches.length === 1) {
+      setIdCliente(String(exactMatches[0]!.id));
+      return;
+    }
+
+    if (!selectedClient || normalizeSearchText(selectedClient.nombre_empresa) !== normalized) {
+      setIdCliente("");
+    }
+  }
+
+  function selectClient(client: Client) {
+    setIdCliente(String(client.id));
+    setClientQuery(client.nombre_empresa);
+    setClientSearchOpen(false);
+    setActiveClientIndex(-1);
+  }
+
+  function handleProductQueryChange(index: number, value: string) {
+    setItems((prev) => {
+      const normalized = normalizeSearchText(value);
+      const exactMatches = normalized
+        ? products.filter((product) => normalizeSearchText(product.nombre) === normalized)
+        : [];
+
+      return prev.map((item, itemIndex) => {
+        if (itemIndex !== index) return item;
+
+        if (!normalized) {
+          return {
+            ...item,
+            id_producto: "",
+            product_query: value,
+            product_search_open: true,
+            product_active_index: 0
+          };
+        }
+
+        if (exactMatches.length === 1) {
+          return {
+            ...item,
+            id_producto: String(exactMatches[0]!.id),
+            product_query: exactMatches[0]!.nombre,
+            product_search_open: true,
+            product_active_index: 0
+          };
+        }
+
+        const selectedProduct = products.find((product) => String(product.id) === item.id_producto) ?? null;
+        const keepCurrentSelection =
+          selectedProduct && normalizeSearchText(selectedProduct.nombre) === normalized;
+
+        return {
+          ...item,
+          id_producto: keepCurrentSelection ? item.id_producto : "",
+          product_query: value,
+          product_search_open: true,
+          product_active_index: 0
+        };
+      });
+    });
+  }
+
+  function selectProduct(index: number, product: Product) {
+    setItems((prev) =>
+      prev.map((item, itemIndex) =>
+        itemIndex === index
+          ? {
+              ...item,
+              id_producto: String(product.id),
+              product_query: product.nombre,
+              product_search_open: false,
+              product_active_index: -1
+            }
+          : item
+      )
+    );
+  }
+
+  function handleProductSearchKeyDown(index: number, event: React.KeyboardEvent<HTMLInputElement>) {
+    const item = items[index];
+    if (!item) return;
+    const filteredProducts = getFilteredProducts(item.product_query);
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setItems((prev) =>
+        prev.map((current, currentIndex) => {
+          if (currentIndex !== index) return current;
+          if (!current.product_search_open) {
+            return {
+              ...current,
+              product_search_open: true,
+              product_active_index: filteredProducts.length > 0 ? 0 : -1
+            };
+          }
+          return {
+            ...current,
+            product_active_index:
+              filteredProducts.length === 0
+                ? -1
+                : current.product_active_index < filteredProducts.length - 1
+                  ? current.product_active_index + 1
+                  : 0
+          };
+        })
+      );
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setItems((prev) =>
+        prev.map((current, currentIndex) => {
+          if (currentIndex !== index) return current;
+          if (!current.product_search_open) {
+            return {
+              ...current,
+              product_search_open: true,
+              product_active_index: filteredProducts.length > 0 ? filteredProducts.length - 1 : -1
+            };
+          }
+          return {
+            ...current,
+            product_active_index:
+              filteredProducts.length === 0
+                ? -1
+                : current.product_active_index > 0
+                  ? current.product_active_index - 1
+                  : filteredProducts.length - 1
+          };
+        })
+      );
+      return;
+    }
+
+    if (event.key === "Enter") {
+      if (!item.product_search_open) return;
+      if (item.product_active_index < 0 || item.product_active_index >= filteredProducts.length) return;
+      event.preventDefault();
+      selectProduct(index, filteredProducts[item.product_active_index]!);
+      return;
+    }
+
+    if (event.key === "Escape") {
+      if (!item.product_search_open) return;
+      event.preventDefault();
+      setItems((prev) =>
+        prev.map((current, currentIndex) =>
+          currentIndex === index ? { ...current, product_search_open: false, product_active_index: -1 } : current
+        )
+      );
+    }
+  }
+
+  function handleClientSearchKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      if (!clientSearchOpen) {
+        setClientSearchOpen(true);
+        setActiveClientIndex(filteredClients.length > 0 ? 0 : -1);
+        return;
+      }
+      setActiveClientIndex((current) => {
+        if (filteredClients.length === 0) return -1;
+        return current < filteredClients.length - 1 ? current + 1 : 0;
+      });
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!clientSearchOpen) {
+        setClientSearchOpen(true);
+        setActiveClientIndex(filteredClients.length > 0 ? filteredClients.length - 1 : -1);
+        return;
+      }
+      setActiveClientIndex((current) => {
+        if (filteredClients.length === 0) return -1;
+        return current > 0 ? current - 1 : filteredClients.length - 1;
+      });
+      return;
+    }
+
+    if (event.key === "Enter") {
+      if (!clientSearchOpen) return;
+      if (activeClientIndex < 0 || activeClientIndex >= filteredClients.length) return;
+      event.preventDefault();
+      selectClient(filteredClients[activeClientIndex]!);
+      return;
+    }
+
+    if (event.key === "Escape") {
+      if (!clientSearchOpen) return;
+      event.preventDefault();
+      setClientSearchOpen(false);
+      setActiveClientIndex(-1);
+    }
+  }
 
   function backToList() {
     navigate("/quotes");
@@ -414,14 +696,45 @@ export default function QuotesCreate() {
           <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(3, 1fr)' }}>
             <label className="field">
               <span className="label">Cliente</span>
-              <select value={idCliente} onChange={(e) => setIdCliente(e.target.value)} className="select">
-                <option value="">Seleccionar</option>
-                {clients.map((c) => (
-                  <option key={c.id} value={String(c.id)}>
-                    {c.nombre_empresa}
-                  </option>
-                ))}
-              </select>
+              <div className="clientSearch">
+                <input
+                  value={clientQuery}
+                  onChange={(e) => handleClientQueryChange(e.target.value)}
+                  onFocus={() => setClientSearchOpen(true)}
+                  onKeyDown={handleClientSearchKeyDown}
+                  onBlur={() => {
+                    window.setTimeout(() => setClientSearchOpen(false), 150);
+                  }}
+                  className="input"
+                  placeholder="Buscar cliente..."
+                  autoComplete="off"
+                />
+                {clientSearchOpen ? (
+                  <div className="clientSearchMenu">
+                    {filteredClients.length > 0 ? (
+                      filteredClients.map((client) => {
+                        const isSelected = String(client.id) === idCliente;
+                        const isActive = filteredClients[activeClientIndex]?.id === client.id;
+                        return (
+                          <button
+                            key={client.id}
+                            type="button"
+                            className={`clientSearchOption ${isActive ? "clientSearchOption--active" : ""}`}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onMouseEnter={() => setActiveClientIndex(filteredClients.findIndex((item) => item.id === client.id))}
+                            onClick={() => selectClient(client)}
+                          >
+                            <span>{client.nombre_empresa}</span>
+                            {isSelected ? <span className="clientSearchBadge">Seleccionado</span> : null}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <div className="clientSearchEmpty">No hay clientes que coincidan con la búsqueda.</div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
             </label>
 
             <label className="field">
@@ -481,18 +794,63 @@ export default function QuotesCreate() {
 
             {items.map((it, idx) => (
               <div key={idx} className="productsRowGrid">
-                <select
-                  value={it.id_producto}
-                  onChange={(e) => setItems((prev) => prev.map((x, i) => (i === idx ? { ...x, id_producto: e.target.value } : x)))}
-                  className="select"
-                >
-                  <option value="">Seleccionar</option>
-                  {products.map((p) => (
-                    <option key={p.id} value={String(p.id)}>
-                      {p.nombre}
-                    </option>
-                  ))}
-                </select>
+                <div className="clientSearch">
+                  <input
+                    value={it.product_query}
+                    onChange={(e) => handleProductQueryChange(idx, e.target.value)}
+                    onFocus={() =>
+                      setItems((prev) =>
+                        prev.map((item, itemIndex) =>
+                          itemIndex === idx ? { ...item, product_search_open: true, product_active_index: 0 } : item
+                        )
+                      )
+                    }
+                    onKeyDown={(e) => handleProductSearchKeyDown(idx, e)}
+                    onBlur={() => {
+                      window.setTimeout(() => {
+                        setItems((prev) =>
+                          prev.map((item, itemIndex) =>
+                            itemIndex === idx ? { ...item, product_search_open: false } : item
+                          )
+                        );
+                      }, 150);
+                    }}
+                    className="input"
+                    placeholder="Buscar producto..."
+                    autoComplete="off"
+                  />
+                  {it.product_search_open ? (
+                    <div className="clientSearchMenu">
+                      {getFilteredProducts(it.product_query).length > 0 ? (
+                        getFilteredProducts(it.product_query).map((product, productIndex, filteredProducts) => {
+                          const isSelected = String(product.id) === it.id_producto;
+                          const isActive = filteredProducts[it.product_active_index]?.id === product.id;
+                          return (
+                            <button
+                              key={product.id}
+                              type="button"
+                              className={`clientSearchOption ${isActive ? "clientSearchOption--active" : ""}`}
+                              onMouseDown={(e) => e.preventDefault()}
+                              onMouseEnter={() =>
+                                setItems((prev) =>
+                                  prev.map((item, itemIndex) =>
+                                    itemIndex === idx ? { ...item, product_active_index: productIndex } : item
+                                  )
+                                )
+                              }
+                              onClick={() => selectProduct(idx, product)}
+                            >
+                              <span>{product.nombre}</span>
+                              {isSelected ? <span className="clientSearchBadge">Seleccionado</span> : null}
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="clientSearchEmpty">No hay productos que coincidan con la búsqueda.</div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
 
                 <input
                   value={it.cantidad}
@@ -525,6 +883,9 @@ export default function QuotesCreate() {
                     ...prev,
                     {
                       id_producto: "",
+                      product_query: "",
+                      product_search_open: false,
+                      product_active_index: -1,
                       cantidad: "1",
                       iva_porcentaje: ivaOptions[0]?.value ?? ""
                     }
