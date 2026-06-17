@@ -1,0 +1,106 @@
+ts-jest[config] (WARN) [94mmessage[0m[90m TS151002: [0mUsing hybrid module kind (Node16/18/Next) is only supported in "isolatedModules: true". Please set "isolatedModules: true" in your tsconfig.json. To disable this message, you can set "diagnostics.ignoreCodes" to include 151002 in your ts-jest config. See more at https://kulshekhar.github.io/ts-jest/docs/getting-started/options/diagnostics
+FAIL src/services/auth.service.test.ts
+  auth.service
+    loginWithPassword
+      √ returns invalid_credentials when user not found (5 ms)
+      √ returns locked when account is locked (1 ms)
+      √ returns invalid_credentials for inactive user (1 ms)
+      √ returns invalid_credentials for inactive company
+      √ returns invalid_credentials when userId is not finite
+      √ returns invalid_credentials on wrong password (below lock threshold) (2 ms)
+      × returns locked when wrong password triggers lock escalation (3 ms)
+      × returns locked when wrong password triggers progressive lock (lockLevel > 0) (2 ms)
+      √ returns token and user on successful login (happy path) (2 ms)
+      √ normalizes email to lowercase on successful login (1 ms)
+      √ falls back to Vendedor when role is invalid (6 ms)
+      √ returns invalid_credentials when empresaId from DB is not finite after construction
+      √ handles null empresaId correctly (1 ms)
+      × getLockUntilMs returns null for invalid date string (3 ms)
+    verifyAccessToken
+      √ returns null on invalid token (1 ms)
+      √ returns null on malformed payload
+      √ returns null when decoded is not an object
+      √ returns null when decoded is null
+      √ returns null when sub is missing
+      √ returns null when rol is invalid
+      √ returns null when empresaId is not finite (1 ms)
+      √ handles empresaId: 0 correctly
+      √ handles empresaId: null correctly (1 ms)
+      √ handles empresaId: undefined correctly
+      √ returns user on valid token (1 ms)
+    verifyPassword (via loginWithPassword)
+      √ rejects password when hash is not scrypt format
+      √ rejects password when hash has wrong number of parts (1 ms)
+      √ rejects password when timingSafeEqual returns false
+
+  ● auth.service › loginWithPassword › returns locked when wrong password triggers lock escalation
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "locked"
+    Received: "invalid_credentials"
+
+    [0m [90m 110 |[39m       expect(result[33m.[39mok)[33m.[39mtoBe([36mfalse[39m)[33m;[39m
+     [90m 111 |[39m       [36mif[39m ([33m![39mresult[33m.[39mok) {
+    [31m[1m>[22m[39m[90m 112 |[39m         expect(result[33m.[39mreason)[33m.[39mtoBe([32m"locked"[39m)[33m;[39m
+     [90m     |[39m                               [31m[1m^[22m[39m
+     [90m 113 |[39m         expect([36mtypeof[39m result[33m.[39mlockUntilMs)[33m.[39mtoBe([32m"number"[39m)[33m;[39m
+     [90m 114 |[39m         expect(result[33m.[39mlockUntilMs[33m![39m)[33m.[39mtoBeGreaterThan(beforeCall)[33m;[39m
+     [90m 115 |[39m       }[0m
+
+      at Object.<anonymous> (src/services/auth.service.test.ts:112:31)
+
+  ● auth.service › loginWithPassword › returns locked when wrong password triggers progressive lock (lockLevel > 0)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "locked"
+    Received: "invalid_credentials"
+
+    [0m [90m 133 |[39m       expect(result[33m.[39mok)[33m.[39mtoBe([36mfalse[39m)[33m;[39m
+     [90m 134 |[39m       [36mif[39m ([33m![39mresult[33m.[39mok) {
+    [31m[1m>[22m[39m[90m 135 |[39m         expect(result[33m.[39mreason)[33m.[39mtoBe([32m"locked"[39m)[33m;[39m
+     [90m     |[39m                               [31m[1m^[22m[39m
+     [90m 136 |[39m         expect([36mtypeof[39m result[33m.[39mlockUntilMs)[33m.[39mtoBe([32m"number"[39m)[33m;[39m
+     [90m 137 |[39m       }
+     [90m 138 |[39m       expect(userModel[33m.[39msetUserLockState)[33m.[39mtoHaveBeenCalledWith([0m
+
+      at Object.<anonymous> (src/services/auth.service.test.ts:135:31)
+
+  ● auth.service › loginWithPassword › getLockUntilMs returns null for invalid date string
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  2
+    + Received  + 10
+
+      Object {
+    -   "ok": false,
+    -   "reason": "invalid_credentials",
+    +   "ok": true,
+    +   "token": "token",
+    +   "user": Object {
+    +     "email": "juan@test.com",
+    +     "empresaId": 1,
+    +     "empresaNombre": "Test Corp",
+    +     "id": 1,
+    +     "nombre": "Juan",
+    +     "rol": "Vendedor",
+    +   },
+      }
+
+    [0m [90m 214 |[39m       })[33m;[39m
+     [90m 215 |[39m       [36mconst[39m result [33m=[39m [36mawait[39m loginWithPassword({ email[33m:[39m [32m"juan@test.com"[39m[33m,[39m password[33m:[39m [32m"test"[39m })[33m;[39m
+    [31m[1m>[22m[39m[90m 216 |[39m       expect(result)[33m.[39mtoEqual({ ok[33m:[39m [36mfalse[39m[33m,[39m reason[33m:[39m [32m"invalid_credentials"[39m })[33m;[39m
+     [90m     |[39m                      [31m[1m^[22m[39m
+     [90m 217 |[39m     })[33m;[39m
+     [90m 218 |[39m   })[33m;[39m
+     [90m 219 |[39m[0m
+
+      at Object.<anonymous> (src/services/auth.service.test.ts:216:22)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 25 passed, 28 total
+Snapshots:   0 total
+Time:        2.851 s, estimated 20 s
+Ran all test suites matching /src\\services\\auth.service.test.ts/i.

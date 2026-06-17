@@ -10,7 +10,7 @@
     "migrate": "tsx src/scripts/migrate.ts",
     "seed:admin": "tsx src/scripts/seedAdmin.ts",
     "init": "tsx src/scripts/init.ts",
-    "test:backend:coverage": "jest --coverage --roots src"
+    "test:backend:coverage": "jest --coverage --roots src --maxWorkers=1"
   },
   "dependencies": {
     "@types/multer": "^2.1.0",
