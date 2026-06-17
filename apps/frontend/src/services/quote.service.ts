@@ -167,6 +167,34 @@ export async function updateQuote(
   });
 }
 
+export async function updateQuoteDraft(
+  id: number,
+  data: {
+    id_cliente: number;
+    moneda: "ARS" | "USD";
+    estado: string;
+    fecha_emision: string;
+    fecha_vencimiento: string | null;
+    fecha_reactivacion_1?: string | null;
+    fecha_reactivacion_2?: string | null;
+    fecha_reactivacion_3?: string | null;
+    reactivacion_activa?: number;
+    descuento_porcentaje_global?: string;
+    tipo_cambio?: string;
+    notas?: string | null;
+    plazo_entrega?: string | null;
+    forma_pago?: string | null;
+    lugar_entrega?: string | null;
+    items: Array<{ id_producto: number; cantidad: number; iva_porcentaje: string }>;
+  }
+) {
+  return apiRequest<{ ok: true; id: number; estado: string; moneda: string }>({
+    path: `/api/quotes/${id}/draft`,
+    method: "PUT",
+    body: data
+  });
+}
+
 export type QuoteReactivationAlert = QuoteListItem & {
   id_cliente: number;
   id_usuario: number;

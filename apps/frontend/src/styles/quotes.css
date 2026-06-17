@@ -232,6 +232,9 @@
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
   animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
+.modalContent--wide {
+  max-width: 640px;
+}
 .modalContent h3 {
   margin: 0 0 8px;
   font-size: 1.4rem;
@@ -256,6 +259,13 @@
   justify-content: flex-end;
   gap: 12px;
   margin-top: 24px;
+}
+.modalActions--responsive {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.modalActions--responsive > * {
+  flex: 1 1 180px;
 }
 
 .minw-170 {

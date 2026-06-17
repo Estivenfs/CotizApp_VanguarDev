@@ -205,7 +205,13 @@ export default function QuotesList() {
       showToast({ type: "success", text: "Estado de la cotización actualizado" });
       void reloadQuotes();
     } catch (err) {
-      setError(getErrorMessage(err, {}, "No se pudo actualizar el estado"));
+      setError(
+        getErrorMessage(
+          err,
+          { no_puede_volver_a_borrador: "No podés volver a poner una cotización como borrador una vez que dejó de serlo." },
+          "No se pudo actualizar el estado"
+        )
+      );
     }
   }
 
@@ -457,7 +463,7 @@ export default function QuotesList() {
             <p>Cotización #{statusModalQuote.id}</p>
             <div className="modalField">
               <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)} className="select modalControl">
-                <option value="BORRADOR">Borrador</option>
+                {statusModalQuote.estado === "BORRADOR" ? <option value="BORRADOR">Borrador</option> : null}
                 <option value="EMITIDA">Emitida</option>
                 <option value="ENVIADA">Enviada</option>
                 <option value="POSPUESTA">Pospuesta</option>

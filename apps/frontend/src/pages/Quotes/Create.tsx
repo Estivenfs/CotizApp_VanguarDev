@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { createPortal } from "react-dom";
+import { useBeforeUnload, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Button } from "../../components/common/Button";
 import { useToast } from "../../context/ToastContext";
 import { ReturnIcon } from "../../components/common/Icons";
@@ -8,6 +9,7 @@ import * as clientService from "../../services/client.service";
 import * as configService from "../../services/config.service";
 import * as productService from "../../services/product.service";
 import * as quoteService from "../../services/quote.service";
+import { extractIsoDate } from "../../utils/date";
 import { getErrorMessage } from "../../utils/feedback";
 import "../../styles/quotes.css"; // assuming there's quotes.css, or just keep layout.css if it's there
 
@@ -112,20 +114,72 @@ function addDays(base: Date, days: number) {
   return next;
 }
 
+function buildQuoteDraftSignature(input: {
+  idCliente: string;
+  clientQuery: string;
+  estado: string;
+  moneda: CurrencyCode;
+  fechaCotizacion: string;
+  fechaVencimiento: string;
+  fechaReactivacion1: string;
+  fechaReactivacion2: string;
+  fechaReactivacion3: string;
+  reactivacionActiva: 1 | 2 | 3;
+  items: QuoteItemDraft[];
+  notas: string;
+  plazoEntrega: string;
+  formaPago: string;
+  lugarEntrega: string;
+  descuentoPorcentajeGlobal: string;
+}) {
+  return JSON.stringify({
+    idCliente: input.idCliente,
+    clientQuery: input.clientQuery,
+    estado: input.estado,
+    moneda: input.moneda,
+    fechaCotizacion: input.fechaCotizacion,
+    fechaVencimiento: input.fechaVencimiento,
+    fechaReactivacion1: input.fechaReactivacion1,
+    fechaReactivacion2: input.fechaReactivacion2,
+    fechaReactivacion3: input.fechaReactivacion3,
+    reactivacionActiva: input.reactivacionActiva,
+    items: input.items.map((item) => ({
+      id_producto: item.id_producto,
+      product_query: item.product_query,
+      cantidad: item.cantidad,
+      iva_porcentaje: item.iva_porcentaje
+    })),
+    notas: input.notas,
+    plazoEntrega: input.plazoEntrega,
+    formaPago: input.formaPago,
+    lugarEntrega: input.lugarEntrega,
+    descuentoPorcentajeGlobal: input.descuentoPorcentajeGlobal
+  });
+}
+
 export default function QuotesCreate() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { showToast } = useToast();
+  const editIdRaw = searchParams.get("editId");
+  const editQuoteId = editIdRaw ? Number(editIdRaw) : null;
+  const isEditMode = editQuoteId !== null && Number.isFinite(editQuoteId) && editQuoteId > 0;
+  const defaultExitPath = isEditMode ? `/quotes/${editQuoteId}` : "/quotes";
 
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [catalogOptions, setCatalogOptions] = useState<CatalogOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [allowNavigation, setAllowNavigation] = useState(false);
+  const [exitModalOpen, setExitModalOpen] = useState(false);
+  const [pendingPath, setPendingPath] = useState<string | null>(null);
+  const [initialFormSignature, setInitialFormSignature] = useState<string | null>(null);
 
-  const [idCliente, setIdCliente] = useState<string>("");
+  const [idCliente, setIdCliente] = useState<string>(() => searchParams.get("clientId") ?? "");
   const [clientQuery, setClientQuery] = useState("");
   const [clientSearchOpen, setClientSearchOpen] = useState(false);
   const [activeClientIndex, setActiveClientIndex] = useState(-1);
@@ -164,6 +218,7 @@ export default function QuotesCreate() {
     producto_invalido: "Uno de los productos seleccionados no es válido.",
     producto_inactivo: "Uno de los productos seleccionados no está activo.",
     items_requeridos: "Agregá al menos un producto con cantidad válida.",
+    solo_borrador_editable: "Solo podés editar cotizaciones en estado borrador.",
     tipo_iva_requerido: "Todos los productos deben tener un tipo de IVA válido.",
     tipo_iva_invalido: "Uno de los tipos de IVA seleccionados no es válido.",
     precio_producto_invalido: "Uno de los productos seleccionados no tiene un precio válido."
@@ -193,10 +248,71 @@ export default function QuotesCreate() {
   }, []);
 
   useEffect(() => {
-    const clientId = searchParams.get("clientId");
-    if (!clientId) return;
-    setIdCliente(clientId);
-  }, [searchParams]);
+    if (!isEditMode || editQuoteId === null) return;
+    const quoteId = editQuoteId;
+    setDraftLoading(true);
+    setError(null);
+    setInfo(null);
+    setInitialFormSignature(null);
+    setClientSearchOpen(false);
+    setActiveClientIndex(-1);
+    setExitModalOpen(false);
+    setPendingPath(null);
+
+    async function loadDraft() {
+      const result = await quoteService.getQuote(quoteId);
+      const q = result.quote;
+      if (q.estado !== "BORRADOR") {
+        showToast({ type: "error", text: "Solo podés editar cotizaciones en estado borrador." });
+        navigate(`/quotes/${quoteId}`);
+        return;
+      }
+
+      setIdCliente(String(q.id_cliente));
+      setClientQuery(result.client?.nombre_empresa ?? "");
+      setEstado("BORRADOR");
+      setMoneda(q.moneda);
+      setFechaCotizacion(extractIsoDate(q.fecha_emision) ?? formatDateInput(new Date()));
+      setFechaVencimiento(extractIsoDate(q.fecha_vencimiento) ?? "");
+      setFechaReactivacion1(extractIsoDate(q.fecha_reactivacion_1) ?? "");
+      setFechaReactivacion2(extractIsoDate(q.fecha_reactivacion_2) ?? "");
+      setFechaReactivacion3(extractIsoDate(q.fecha_reactivacion_3) ?? "");
+      setReactivacionActiva((Number(q.reactivacion_activa ?? 1) as 1 | 2 | 3) ?? 1);
+      setDescuentoPorcentajeGlobal(q.descuento_porcentaje_global ?? "0");
+      setNotas(q.notas ?? "");
+      setPlazoEntrega(q.plazo_entrega ?? "");
+      setFormaPago(q.forma_pago ?? "");
+      setLugarEntrega(q.lugar_entrega ?? "");
+
+      const nextItems =
+        result.items.length > 0
+          ? result.items.map((item) => ({
+              id_producto: String(item.id_producto),
+              product_query: item.producto_nombre ?? "",
+              product_search_open: false,
+              product_active_index: -1,
+              cantidad: String(item.cantidad ?? 1),
+              iva_porcentaje: item.iva_porcentaje ?? ""
+            }))
+          : [
+              {
+                id_producto: "",
+                product_query: "",
+                product_search_open: false,
+                product_active_index: -1,
+                cantidad: "1",
+                iva_porcentaje: ""
+              }
+            ];
+      setItems(nextItems);
+    }
+
+    loadDraft()
+      .catch((err) => {
+        setError(getErrorMessage(err, {}, "No se pudo cargar el borrador"));
+      })
+      .finally(() => setDraftLoading(false));
+  }, [editQuoteId, isEditMode, navigate, showToast]);
 
   function normalizeSearchText(value: string) {
     return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("es-AR");
@@ -392,6 +508,86 @@ export default function QuotesCreate() {
     () => sortedClients.find((client) => String(client.id) === idCliente) ?? null,
     [sortedClients, idCliente]
   );
+  const currentFormSignature = useMemo(
+    () =>
+      buildQuoteDraftSignature({
+        idCliente,
+        clientQuery,
+        estado,
+        moneda,
+        fechaCotizacion,
+        fechaVencimiento,
+        fechaReactivacion1,
+        fechaReactivacion2,
+        fechaReactivacion3,
+        reactivacionActiva,
+        items,
+        notas,
+        plazoEntrega,
+        formaPago,
+        lugarEntrega,
+        descuentoPorcentajeGlobal
+      }),
+    [
+      clientQuery,
+      descuentoPorcentajeGlobal,
+      estado,
+      fechaCotizacion,
+      fechaReactivacion1,
+      fechaReactivacion2,
+      fechaReactivacion3,
+      fechaVencimiento,
+      formaPago,
+      idCliente,
+      items,
+      lugarEntrega,
+      moneda,
+      notas,
+      plazoEntrega,
+      reactivacionActiva
+    ]
+  );
+  const initialClientReady = !idCliente || (!!selectedClient && clientQuery === selectedClient.nombre_empresa);
+  const initialItemsReady = ivaOptions.length === 0 || items.every((item) => Boolean(item.iva_porcentaje));
+  const hasUnsavedChanges = initialFormSignature !== null && currentFormSignature !== initialFormSignature;
+
+  useEffect(() => {
+    if (initialFormSignature !== null || loading || draftLoading || !initialClientReady || !initialItemsReady) return;
+    setInitialFormSignature(currentFormSignature);
+  }, [currentFormSignature, draftLoading, initialClientReady, initialFormSignature, initialItemsReady, loading]);
+
+  useBeforeUnload((event) => {
+    if (allowNavigation || saving || !hasUnsavedChanges) return;
+    event.preventDefault();
+    event.returnValue = "";
+  });
+
+  useEffect(() => {
+    function onDocumentClick(event: MouseEvent) {
+      if (allowNavigation || saving || !hasUnsavedChanges || event.defaultPrevented) return;
+      if (!(event.target instanceof Element)) return;
+
+      const anchor = event.target.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
+      if (anchor.target && anchor.target !== "_self") return;
+      if (anchor.hasAttribute("download")) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+      const targetUrl = new URL(anchor.href, window.location.href);
+      if (targetUrl.origin !== window.location.origin) return;
+
+      const nextPath = `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
+      const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      if (nextPath === currentPath) return;
+
+      event.preventDefault();
+      setPendingPath(nextPath);
+      setExitModalOpen(true);
+    }
+
+    document.addEventListener("click", onDocumentClick, true);
+    return () => document.removeEventListener("click", onDocumentClick, true);
+  }, [allowNavigation, hasUnsavedChanges, saving]);
 
   function handleClientQueryChange(value: string) {
     setClientQuery(value);
@@ -608,7 +804,17 @@ export default function QuotesCreate() {
   }
 
   function backToList() {
-    navigate("/quotes");
+    requestNavigation(defaultExitPath);
+  }
+
+  function requestNavigation(path: string) {
+    if (allowNavigation || saving || !hasUnsavedChanges) {
+      navigate(path);
+      return;
+    }
+
+    setPendingPath(path);
+    setExitModalOpen(true);
   }
 
   function parseNewItemsForPayload() {
@@ -630,7 +836,7 @@ export default function QuotesCreate() {
       );
   }
 
-  async function saveDraft() {
+  async function saveDraft(nextPath?: string | null) {
     setError(null);
     setInfo(null);
 
@@ -646,12 +852,13 @@ export default function QuotesCreate() {
     setSaving(true);
     try {
       const payloadItems = parseNewItemsForPayload();
-      await quoteService.createQuote({
+      const fechaVencimientoIso = fechaVencimiento ? `${fechaVencimiento}T00:00:00.000Z` : undefined;
+      const payload = {
         id_cliente: idClienteNum,
         moneda,
         estado: "BORRADOR",
         fecha_emision: `${fechaCotizacion}T00:00:00.000Z`,
-        fecha_vencimiento: `${fechaVencimiento}T00:00:00.000Z`,
+        fecha_vencimiento: fechaVencimientoIso,
         fecha_reactivacion_1: fechaReactivacion1 ? `${fechaReactivacion1}T00:00:00.000Z` : undefined,
         fecha_reactivacion_2: fechaReactivacion2 ? `${fechaReactivacion2}T00:00:00.000Z` : undefined,
         fecha_reactivacion_3: fechaReactivacion3 ? `${fechaReactivacion3}T00:00:00.000Z` : undefined,
@@ -663,9 +870,22 @@ export default function QuotesCreate() {
         forma_pago: formaPago,
         lugar_entrega: lugarEntrega,
         items: payloadItems
-      });
-      showToast({ type: "success", text: "Borrador guardado correctamente" });
-      navigate("/quotes");
+      };
+
+      if (isEditMode) {
+        await quoteService.updateQuoteDraft(editQuoteId, {
+          ...payload,
+          fecha_vencimiento: fechaVencimientoIso ?? null
+        });
+        showToast({ type: "success", text: "Borrador actualizado correctamente" });
+        setAllowNavigation(true);
+        navigate(nextPath ?? defaultExitPath);
+      } else {
+        await quoteService.createQuote(payload);
+        showToast({ type: "success", text: "Borrador guardado correctamente" });
+        setAllowNavigation(true);
+        navigate(nextPath ?? "/quotes");
+      }
     } catch (err) {
       setError(getErrorMessage(err, quoteErrorMessages, "No se pudo guardar el borrador"));
       setSaving(false);
@@ -694,12 +914,13 @@ export default function QuotesCreate() {
     setSaving(true);
     try {
       const estadoToSend = estado === "BORRADOR" ? "EMITIDA" : estado;
-      const created = await quoteService.createQuote({
+      const fechaVencimientoIso = fechaVencimiento ? `${fechaVencimiento}T00:00:00.000Z` : undefined;
+      const payload = {
         id_cliente: idClienteNum,
         moneda,
         estado: estadoToSend,
         fecha_emision: `${fechaCotizacion}T00:00:00.000Z`,
-        fecha_vencimiento: `${fechaVencimiento}T00:00:00.000Z`,
+        fecha_vencimiento: fechaVencimientoIso,
         fecha_reactivacion_1: fechaReactivacion1 ? `${fechaReactivacion1}T00:00:00.000Z` : undefined,
         fecha_reactivacion_2: fechaReactivacion2 ? `${fechaReactivacion2}T00:00:00.000Z` : undefined,
         fecha_reactivacion_3: fechaReactivacion3 ? `${fechaReactivacion3}T00:00:00.000Z` : undefined,
@@ -711,12 +932,21 @@ export default function QuotesCreate() {
         forma_pago: formaPago,
         lugar_entrega: lugarEntrega,
         items: payloadItems
-      });
+      };
 
-      const pdf = await quoteService.downloadQuotePdf(created.id);
-      downloadBlob(pdf.blob, pdf.filename ?? `cotizacion-${created.id}.pdf`);
+      const created = isEditMode ? null : await quoteService.createQuote(payload);
+      if (isEditMode) {
+        await quoteService.updateQuoteDraft(editQuoteId, {
+          ...payload,
+          fecha_vencimiento: fechaVencimientoIso ?? null
+        });
+      }
+
+      const pdf = await quoteService.downloadQuotePdf(isEditMode ? editQuoteId : created!.id);
+      downloadBlob(pdf.blob, pdf.filename ?? `cotizacion-${isEditMode ? editQuoteId : created!.id}.pdf`);
       showToast({ type: "success", text: "Cotización generada correctamente" });
-      navigate("/quotes");
+      setAllowNavigation(true);
+      navigate(isEditMode ? defaultExitPath : "/quotes");
     } catch (err) {
       setError(getErrorMessage(err, quoteErrorMessages, "No se pudo generar la cotización"));
       setSaving(false);
@@ -730,9 +960,16 @@ export default function QuotesCreate() {
             <div>
               <h1 className="pageTitle">Cotizaciones</h1>
               <div className="pageSubtitle" style={{ marginTop: 8 }}>
-                <Link to="/quotes" style={{ textDecoration: "none", color: "inherit", opacity: 0.8 }}>Cotizaciones</Link> 
+                <Link
+                  to="/quotes"
+                  style={{ textDecoration: "none", color: "inherit", opacity: 0.8 }}
+                >
+                  Cotizaciones
+                </Link>
                 <span style={{ margin: "0 6px", opacity: 0.5 }}>›</span> 
-                <span style={{ fontWeight: 600 }}>Nueva cotización</span>
+                <span style={{ fontWeight: 600 }}>
+                  {isEditMode ? `Editar borrador #${editQuoteId}` : "Nueva cotización"}
+                </span>
               </div>
             </div>
             <Button onClick={backToList} disabled={saving} className="btn--ghost" style={{ border: "none", fontWeight: 600, display: "flex", gap: 8 }}>
@@ -1060,19 +1297,60 @@ export default function QuotesCreate() {
           </div>
 
           <div className="newActions">
-            <Button disabled={saving} onClick={() => void saveDraft()} className="btn--ghost minw-170">
-              Guardar borrador
+            <Button disabled={saving || draftLoading} onClick={() => void saveDraft()} className="btn--ghost minw-170">
+              {isEditMode ? "Guardar cambios" : "Guardar borrador"}
             </Button>
-            <Button disabled={saving} onClick={() => void generateQuote()} className="btn--primary minw-170">
+            <Button disabled={saving || draftLoading} onClick={() => void generateQuote()} className="btn--primary minw-170">
               Generar
             </Button>
-            <Button disabled={saving} onClick={backToList} className="btn--danger minw-170">
-              Descartar
+            <Button disabled={saving || draftLoading} onClick={backToList} className="btn--danger minw-170">
+              {isEditMode ? "Volver" : "Descartar"}
             </Button>
           </div>
 
           {saving ? <div className="hint">Procesando...</div> : null}
         </div>
+        {exitModalOpen
+          ? createPortal(
+          <div className="modalOverlay" onClick={() => null}>
+            <div className="modalContent modalContent--wide" onClick={(e) => e.stopPropagation()}>
+              <h3>Abandonar cotización</h3>
+              <p>Tenés una cotización en curso. Podés guardarla como borrador antes de salir o salir sin guardar.</p>
+              <div className="modalActions modalActions--responsive" style={{ marginTop: 24 }}>
+                <Button
+                  onClick={() => {
+                    setExitModalOpen(false);
+                    setPendingPath(null);
+                  }}
+                  className="btn--ghost"
+                  disabled={saving}
+                >
+                  Seguir editando
+                </Button>
+                <Button
+                  onClick={() => void saveDraft(pendingPath)}
+                  className="btn--primary"
+                  disabled={saving}
+                >
+                  {saving ? "Guardando..." : "Guardar como borrador"}
+                </Button>
+                <Button
+                  onClick={() => {
+                    setAllowNavigation(true);
+                    setExitModalOpen(false);
+                    navigate(pendingPath ?? "/quotes");
+                  }}
+                  className="btn--danger"
+                  disabled={saving}
+                >
+                  Salir sin guardar
+                </Button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+          : null}
     </div>
   );
 }

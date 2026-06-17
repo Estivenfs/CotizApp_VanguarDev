@@ -9,6 +9,7 @@ import {
   listQuoteItems,
   listReactivationAlerts,
   listQuotes,
+  updateQuoteDraftTransactional,
   updateQuote
 } from "../models/quote.model.js";
 import { generateQuotePdfBuffer } from "../services/pdf.service.js";
@@ -412,6 +413,10 @@ export async function updateQuoteHandler(req: Request, res: Response) {
   if (req.body?.estado) {
     const estadoRaw = req.body.estado.trim();
     if (allowedEstados.has(estadoRaw)) {
+      if (estadoRaw === "BORRADOR" && current.estado !== "BORRADOR") {
+        res.status(400).json({ ok: false, error: "no_puede_volver_a_borrador" });
+        return;
+      }
       data.estado = estadoRaw;
     }
   }
@@ -516,4 +521,231 @@ export async function updateQuoteHandler(req: Request, res: Response) {
   }
 
   res.json({ ok: true });
+}
+
+export async function updateQuoteDraftHandler(req: Request, res: Response) {
+  if (!req.user) {
+    res.status(401).json({ ok: false, error: "unauthorized" });
+    return;
+  }
+
+  const id = parseNumericId(req.params.id);
+  if (!id) {
+    res.status(400).json({ ok: false, error: "invalid_id" });
+    return;
+  }
+
+  const companyId = getCompanyIdForWrite(req);
+  if (!companyId) {
+    res.status(400).json({ ok: false, error: "empresa_requerida" });
+    return;
+  }
+
+  const current = await getQuoteById(id, companyId);
+  if (!current) {
+    res.status(404).json({ ok: false, error: "not_found" });
+    return;
+  }
+
+  if (current.estado !== "BORRADOR") {
+    res.status(400).json({ ok: false, error: "solo_borrador_editable" });
+    return;
+  }
+
+  const idCliente = parseNumericId(req.body?.id_cliente);
+  const moneda = req.body?.moneda === "ARS" || req.body?.moneda === "USD" ? req.body.moneda : null;
+  const descuentoGlobalBp =
+    parsePercentToBasisPoints(
+      req.body?.descuento_porcentaje_global ?? req.body?.descuento_porcentaje ?? req.body?.descuento_global ?? "0"
+    ) ?? 0n;
+  const tipoCambio = parseDecimalString(req.body?.tipo_cambio ?? "1", 6);
+  const estadoRaw = typeof req.body?.estado === "string" ? req.body.estado.trim() : "";
+  const estado = allowedEstados.has(estadoRaw) ? estadoRaw : "BORRADOR";
+
+  const fechaEmisionIso = parseIsoDateOrNull(req.body?.fecha_emision) ?? current.fecha_emision;
+  const fechaVencimientoIso = parseIsoDateOrNull(req.body?.fecha_vencimiento);
+  const fallbackReactivation1 = addDaysIso(fechaEmisionIso, 7);
+  const fallbackReactivation2 = addDaysIso(fechaEmisionIso, 14);
+  const fallbackReactivation3 = addDaysIso(fechaEmisionIso, 21);
+  const proximaAlertaIso = parseIsoDateOrNull(req.body?.proxima_alerta);
+  const fechaReactivacion1Iso = parseIsoDateOrNull(req.body?.fecha_reactivacion_1) ?? fallbackReactivation1;
+  const fechaReactivacion2Iso = parseIsoDateOrNull(req.body?.fecha_reactivacion_2) ?? fallbackReactivation2;
+  const fechaReactivacion3Iso = parseIsoDateOrNull(req.body?.fecha_reactivacion_3) ?? fallbackReactivation3;
+  const reactivacionActiva = parseActiveReactivationSlot(req.body?.reactivacion_activa) ?? 1;
+  const notas = parseTextOrNull(req.body?.notas);
+  const plazoEntrega = parseTextOrNull(req.body?.plazo_entrega);
+  const formaPago = parseTextOrNull(req.body?.forma_pago);
+  const lugarEntrega = parseTextOrNull(req.body?.lugar_entrega);
+  const reactivationDates = [fechaReactivacion1Iso, fechaReactivacion2Iso, fechaReactivacion3Iso] as const;
+  const activeReactivationDate = reactivationDates[reactivacionActiva - 1] ?? proximaAlertaIso ?? null;
+
+  const items = Array.isArray(req.body?.items) ? (req.body.items as QuoteItemRequest[]) : [];
+  const itemsWithProduct = items.filter((item) => parseNumericId(item.id_producto));
+  const parsedItems = items
+    .map((item) => {
+      const idProducto = parseNumericId(item.id_producto);
+      const cantidad = parseQty(item.cantidad);
+      const ivaValue = typeof item.iva_porcentaje === "string" ? item.iva_porcentaje.trim() : "";
+      return idProducto && cantidad && ivaValue ? { idProducto, cantidad, ivaValue } : null;
+    })
+    .filter((x): x is { idProducto: number; cantidad: number; ivaValue: string } => x !== null);
+
+  if (!idCliente || !moneda || !tipoCambio) {
+    res.status(400).json({ ok: false, error: "invalid_request" });
+    return;
+  }
+
+  if (descuentoGlobalBp < 0n || descuentoGlobalBp > 10000n) {
+    res.status(400).json({ ok: false, error: "descuento_global_invalido" });
+    return;
+  }
+
+  if (itemsWithProduct.length !== parsedItems.length) {
+    res.status(400).json({ ok: false, error: "tipo_iva_requerido" });
+    return;
+  }
+
+  if (formaPago) {
+    const option = await getActiveCatalogOptionByValue(companyId, "forma_pago", formaPago);
+    if (!option) {
+      res.status(400).json({ ok: false, error: "forma_pago_invalida" });
+      return;
+    }
+  }
+
+  if (lugarEntrega) {
+    const option = await getActiveCatalogOptionByValue(companyId, "lugar_entrega", lugarEntrega);
+    if (!option) {
+      res.status(400).json({ ok: false, error: "lugar_entrega_invalido" });
+      return;
+    }
+  }
+
+  const client = await getClientById(idCliente, companyId);
+  if (!client) {
+    res.status(400).json({ ok: false, error: "cliente_invalido" });
+    return;
+  }
+  if (client.estado.trim().toLowerCase() !== "activo") {
+    res.status(400).json({ ok: false, error: "cliente_inactivo" });
+    return;
+  }
+
+  const linesForTotals: Array<{ grossSubtotalCents: bigint; ivaBasisPoints: bigint }> = [];
+  const itemsToInsert: Array<{
+    idProducto: number;
+    cantidad: number;
+    precioUnitarioMomento: string;
+    ivaPorcentaje: string;
+  }> = [];
+
+  if (parsedItems.length === 0 && estado !== "BORRADOR") {
+    res.status(400).json({ ok: false, error: "items_requeridos" });
+    return;
+  }
+
+  for (const it of parsedItems) {
+    const product = await getProductById(it.idProducto, companyId);
+    if (!product) {
+      res.status(400).json({ ok: false, error: "producto_invalido" });
+      return;
+    }
+    if (product.estado.trim().toLowerCase() !== "activo") {
+      res.status(400).json({ ok: false, error: "producto_inactivo" });
+      return;
+    }
+
+    const ivaOption = await getActiveCatalogOptionByValue(companyId, "tipo_iva", it.ivaValue);
+    if (!ivaOption) {
+      res.status(400).json({ ok: false, error: "tipo_iva_invalido" });
+      return;
+    }
+    const ivaBp = parsePercentToBasisPoints(ivaOption.value);
+    if (ivaBp === null) {
+      res.status(400).json({ ok: false, error: "tipo_iva_invalido" });
+      return;
+    }
+
+    const unitStr = moneda === "ARS" ? product.precio_ars : product.precio_usd;
+    const unitCents = parseMoneyToCents(unitStr);
+    if (unitCents === null) {
+      res.status(400).json({ ok: false, error: "precio_producto_invalido" });
+      return;
+    }
+
+    const grossLineTotal = unitCents * BigInt(it.cantidad);
+    linesForTotals.push({ grossSubtotalCents: grossLineTotal, ivaBasisPoints: ivaBp });
+    itemsToInsert.push({
+      idProducto: it.idProducto,
+      cantidad: it.cantidad,
+      precioUnitarioMomento: centsToMoneyString(unitCents),
+      ivaPorcentaje: basisPointsToPercentString(ivaBp)
+    });
+  }
+
+  const totals = calculateQuoteTotalsFromLines({
+    lines: linesForTotals,
+    globalDiscountBasisPoints: descuentoGlobalBp
+  });
+
+  const effectiveIvaBp =
+    totals.subtotalCents > 0n ? (totals.ivaCents * 10000n + totals.subtotalCents / 2n) / totals.subtotalCents : 0n;
+
+  await updateQuoteDraftTransactional({
+    quoteId: id,
+    idEmpresa: companyId,
+    idCliente,
+    fechaEmisionIso,
+    fechaVencimientoIso: fechaVencimientoIso ?? null,
+    moneda,
+    tipoCambio,
+    subtotal: centsToMoneyString(totals.subtotalCents),
+    ivaPorcentaje: basisPointsToPercentString(effectiveIvaBp),
+    descuentoPorcentajeGlobal: basisPointsToPercentString(descuentoGlobalBp),
+    descuentoGlobal: centsToMoneyString(totals.discountCents),
+    totalFinal: centsToMoneyString(totals.totalFinalCents),
+    estado,
+    notas,
+    plazoEntrega,
+    formaPago,
+    lugarEntrega,
+    proximaAlertaIso: activeReactivationDate,
+    fechaReactivacion1Iso,
+    fechaReactivacion2Iso,
+    fechaReactivacion3Iso,
+    reactivacionActiva,
+    items: itemsToInsert
+  });
+
+  if (estado !== current.estado) {
+    await addQuoteTrackingEvent({
+      quoteId: id,
+      userId: req.user.id,
+      actionType: "CAMBIO_ESTADO",
+      actionAtIso: new Date().toISOString(),
+      note: null,
+      metadata: { from: current.estado, to: estado }
+    });
+  } else {
+    await addQuoteTrackingEvent({
+      quoteId: id,
+      userId: req.user.id,
+      actionType: "EDICION_BORRADOR",
+      actionAtIso: new Date().toISOString(),
+      note: null,
+      metadata: {}
+    });
+  }
+
+  res.json({
+    ok: true,
+    id,
+    moneda,
+    estado,
+    subtotal: centsToMoneyString(totals.subtotalCents),
+    iva_porcentaje: basisPointsToPercentString(effectiveIvaBp),
+    descuento_porcentaje_global: basisPointsToPercentString(descuentoGlobalBp),
+    descuento_global: centsToMoneyString(totals.discountCents),
+    total_final: centsToMoneyString(totals.totalFinalCents)
+  });
 }

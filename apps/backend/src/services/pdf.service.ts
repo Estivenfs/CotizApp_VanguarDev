@@ -28,8 +28,11 @@ type PdfRow = {
   producto_nombre: string;
 };
 
-function formatIsoDateUtc(value: string) {
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+function formatIsoDateUtc(value: unknown) {
+  if (value === null || value === undefined) return "-";
+  const str = value instanceof Date ? value.toISOString() : typeof value === "string" ? value : String(value);
+
+  const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (match) {
     const year = Number(match[1]);
     const month = Number(match[2]);
@@ -37,8 +40,8 @@ function formatIsoDateUtc(value: string) {
     return new Intl.DateTimeFormat("es-AR", { timeZone: "UTC" }).format(new Date(Date.UTC(year, month - 1, day)));
   }
 
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return value;
+  const date = new Date(str);
+  if (!Number.isFinite(date.getTime())) return str;
 
   return new Intl.DateTimeFormat("es-AR", { timeZone: "UTC" }).format(
     new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
@@ -155,9 +158,7 @@ export async function generateQuotePdfBuffer(quoteId: number) {
 
   // Col 3: Quote Details
   doc.font("Helvetica").fontSize(9).fillColor(mutedColor);
-  const formatDate = (iso: string) => {
-    return formatIsoDateUtc(iso);
-  };
+  const formatDate = (iso: unknown) => formatIsoDateUtc(iso);
   
   let qy = y;
   const detailLabelX = col3X;

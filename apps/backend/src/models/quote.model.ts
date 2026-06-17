@@ -512,3 +512,122 @@ export async function updateQuote(
 
   return result.rowCount ? result.rowCount > 0 : false;
 }
+
+export type UpdateQuoteDraftInput = {
+  quoteId: number;
+  idEmpresa: number;
+  idCliente: number;
+  fechaEmisionIso: string;
+  fechaVencimientoIso: string | null;
+  moneda: "ARS" | "USD";
+  tipoCambio: string;
+  subtotal: string;
+  ivaPorcentaje: string;
+  descuentoPorcentajeGlobal: string;
+  descuentoGlobal: string;
+  totalFinal: string;
+  estado: string;
+  notas: string | null;
+  plazoEntrega: string | null;
+  formaPago: string | null;
+  lugarEntrega: string | null;
+  proximaAlertaIso: string | null;
+  fechaReactivacion1Iso?: string | null;
+  fechaReactivacion2Iso?: string | null;
+  fechaReactivacion3Iso?: string | null;
+  reactivacionActiva?: 1 | 2 | 3;
+  items: Array<{
+    idProducto: number;
+    cantidad: number;
+    precioUnitarioMomento: string;
+    ivaPorcentaje: string;
+  }>;
+};
+
+export async function updateQuoteDraftTransactional(input: UpdateQuoteDraftInput) {
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+
+    const updateResult = await client.query(
+      `
+        update cotizaciones
+        set
+          id_cliente = $3,
+          fecha_emision = $4,
+          fecha_vencimiento = $5,
+          moneda = $6,
+          tipo_cambio = $7,
+          subtotal = $8,
+          iva_porcentaje = $9,
+          descuento_porcentaje_global = $10,
+          descuento_global = $11,
+          total_final = $12,
+          estado = $13,
+          notas = $14,
+          plazo_entrega = $15,
+          forma_pago = $16,
+          lugar_entrega = $17,
+          proxima_alerta = $18,
+          fecha_reactivacion_1 = $19,
+          fecha_reactivacion_2 = $20,
+          fecha_reactivacion_3 = $21,
+          reactivacion_activa = $22
+        where id = $1
+          and id_empresa = $2
+      `,
+      [
+        input.quoteId,
+        input.idEmpresa,
+        input.idCliente,
+        input.fechaEmisionIso,
+        input.fechaVencimientoIso,
+        input.moneda,
+        input.tipoCambio,
+        input.subtotal,
+        input.ivaPorcentaje,
+        input.descuentoPorcentajeGlobal,
+        input.descuentoGlobal,
+        input.totalFinal,
+        input.estado,
+        input.notas,
+        input.plazoEntrega,
+        input.formaPago,
+        input.lugarEntrega,
+        input.proximaAlertaIso,
+        input.fechaReactivacion1Iso ?? null,
+        input.fechaReactivacion2Iso ?? null,
+        input.fechaReactivacion3Iso ?? null,
+        input.reactivacionActiva ?? 1
+      ]
+    );
+
+    if (!updateResult.rowCount) {
+      throw new Error("not_found");
+    }
+
+    await client.query(`delete from items_cotizacion where id_cotizacion = $1`, [input.quoteId]);
+
+    for (const item of input.items) {
+      await client.query(
+        `
+          insert into items_cotizacion (id_cotizacion, id_producto, cantidad, precio_unitario_momento, iva_porcentaje)
+          values ($1, $2, $3, $4, $5)
+        `,
+        [input.quoteId, item.idProducto, item.cantidad, item.precioUnitarioMomento, item.ivaPorcentaje]
+      );
+    }
+
+    await client.query("commit");
+    return true;
+  } catch (error) {
+    try {
+      await client.query("rollback");
+    } catch {
+      // ignore
+    }
+    throw error;
+  } finally {
+    client.release();
+  }
+}

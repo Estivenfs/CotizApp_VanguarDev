@@ -124,7 +124,13 @@ export default function QuotesView() {
       void loadData();
       void loadTracking();
     } catch (err) {
-      setError(getErrorMessage(err, {}, "No se pudo guardar la cotización"));
+      setError(
+        getErrorMessage(
+          err,
+          { no_puede_volver_a_borrador: "No podés volver a poner una cotización como borrador una vez que dejó de serlo." },
+          "No se pudo guardar la cotización"
+        )
+      );
     } finally {
       setSaving(false);
     }
@@ -458,6 +464,16 @@ export default function QuotesView() {
           
           {/* Action Buttons */}
           <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 12 }}>
+            {q.estado === "BORRADOR" ? (
+              <Button
+                className="btn--secondary"
+                style={{ width: "100%", justifyContent: "center" }}
+                onClick={() => navigate(`/quotes/create?editId=${q.id}`)}
+                disabled={saving || trackingSaving}
+              >
+                Editar
+              </Button>
+            ) : null}
             <Button
               className="btn--primary"
               style={{ width: "100%", justifyContent: "center", padding: "12px" }}
@@ -540,7 +556,7 @@ export default function QuotesView() {
               <label className="field" style={{ margin: 0 }}>
                 <span className="label">Estado</span>
                 <select value={estado} onChange={(e) => setEstado(e.target.value)} className="select" style={{ background: "var(--background)" }}>
-                  <option value="BORRADOR">Borrador</option>
+                  {q.estado === "BORRADOR" ? <option value="BORRADOR">Borrador</option> : null}
                   <option value="EMITIDA">Emitida</option>
                   <option value="ENVIADA">Enviada</option>
                   <option value="POSPUESTA">Pospuesta</option>
