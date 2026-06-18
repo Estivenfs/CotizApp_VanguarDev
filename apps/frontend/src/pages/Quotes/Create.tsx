@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useBeforeUnload, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { Button } from "../../components/common/Button";
+import { ErrorModal } from "../../components/common/ErrorModal";
 import { useToast } from "../../context/ToastContext";
 import { ReturnIcon, TrashIcon } from "../../components/common/Icons";
 import type { CatalogOption, Client, CurrencyCode, Product } from "../../types";
@@ -173,6 +174,7 @@ export default function QuotesCreate() {
   const [draftLoading, setDraftLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
   const [info, setInfo] = useState<string | null>(null);
   const [allowNavigation, setAllowNavigation] = useState(false);
   const [exitModalOpen, setExitModalOpen] = useState(false);
@@ -238,7 +240,9 @@ export default function QuotesCreate() {
       setProducts(p);
       setCatalogOptions(options);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "load_error");
+      const msg = err instanceof Error ? err.message : "load_error";
+      setError(msg);
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -323,7 +327,9 @@ export default function QuotesCreate() {
 
     loadDraft()
       .catch((err) => {
-        setError(getErrorMessage(err, {}, "No se pudo cargar el borrador"));
+        const msg = getErrorMessage(err, {}, "No se pudo cargar el borrador");
+        setError(msg);
+        setShowErrorModal(true);
       })
       .finally(() => setDraftLoading(false));
   }, [editQuoteId, isEditMode, navigate, showToast]);
@@ -852,15 +858,18 @@ export default function QuotesCreate() {
 
   async function saveDraft(nextPath?: string | null) {
     setError(null);
+    setShowErrorModal(false);
     setInfo(null);
 
     const idClienteNum = Number(idCliente);
     if (!Number.isFinite(idClienteNum) || idClienteNum <= 0) {
       setError("Seleccioná un cliente válido");
+      setShowErrorModal(true);
       return;
     }
     if (!isDiscountValid) {
       setError("El descuento global debe ser un porcentaje entre 0 y 100 (ej: 10 o 10.5)");
+      setShowErrorModal(true);
       return;
     }
     setSaving(true);
@@ -901,27 +910,33 @@ export default function QuotesCreate() {
         navigate(nextPath ?? "/quotes");
       }
     } catch (err) {
-      setError(getErrorMessage(err, quoteErrorMessages, "No se pudo guardar el borrador"));
+      const msg = getErrorMessage(err, quoteErrorMessages, "No se pudo guardar el borrador");
+      setError(msg);
+      setShowErrorModal(true);
       setSaving(false);
     }
   }
 
   async function generateQuote() {
     setError(null);
+    setShowErrorModal(false);
     setInfo(null);
 
     const idClienteNum = Number(idCliente);
     if (!Number.isFinite(idClienteNum) || idClienteNum <= 0) {
       setError("Seleccioná un cliente válido");
+      setShowErrorModal(true);
       return;
     }
     if (!isDiscountValid) {
       setError("El descuento global debe ser un porcentaje entre 0 y 100 (ej: 10 o 10.5)");
+      setShowErrorModal(true);
       return;
     }
     const payloadItems = parseNewItemsForPayload();
     if (payloadItems.length === 0) {
       setError("Agregá al menos un producto con cantidad válida");
+      setShowErrorModal(true);
       return;
     }
 
@@ -962,7 +977,9 @@ export default function QuotesCreate() {
       setAllowNavigation(true);
       navigate(isEditMode ? defaultExitPath : "/quotes");
     } catch (err) {
-      setError(getErrorMessage(err, quoteErrorMessages, "No se pudo generar la cotización"));
+      const msg = getErrorMessage(err, quoteErrorMessages, "No se pudo generar la cotización");
+      setError(msg);
+      setShowErrorModal(true);
       setSaving(false);
     }
   }
@@ -991,8 +1008,13 @@ export default function QuotesCreate() {
             </Button>
           </div>
 
-          {error ? <div className="error">{error}</div> : null}
           {info ? <div className="success">{info}</div> : null}
+
+          <ErrorModal
+            open={showErrorModal}
+            message={error ?? ""}
+            onClose={() => { setShowErrorModal(false); setError(null); }}
+          />
 
           <div className="sectionTitle" style={{ marginTop: 8 }}>Datos generales</div>
           <div className="divider" />

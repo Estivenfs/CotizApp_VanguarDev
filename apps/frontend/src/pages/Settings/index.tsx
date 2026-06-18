@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { Button } from "../../components/common/Button";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
+import { ErrorModal } from "../../components/common/ErrorModal";
 import { useAuth } from "../../context/AuthContext";
 import type { Company, ManagedUser, UserRole } from "../../types";
 import * as companyService from "../../services/company.service";
@@ -161,6 +162,7 @@ export default function SettingsPage() {
   const [companiesLoading, setCompaniesLoading] = useState(false);
   const [companiesIncludeInactive, setCompaniesIncludeInactive] = useState(false);
   const [companiesError, setCompaniesError] = useState<string | null>(null);
+  const [showCompaniesErrorModal, setShowCompaniesErrorModal] = useState(false);
   const [companySaving, setCompanySaving] = useState(false);
   const [companyDialogMode, setCompanyDialogMode] = useState<"create" | "edit" | null>(null);
   const [editingCompanyId, setEditingCompanyId] = useState<number | null>(null);
@@ -170,6 +172,7 @@ export default function SettingsPage() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersIncludeInactive, setUsersIncludeInactive] = useState(false);
   const [usersError, setUsersError] = useState<string | null>(null);
+  const [showUsersErrorModal, setShowUsersErrorModal] = useState(false);
   const [userCompanyFilter, setUserCompanyFilter] = useState<number | "all">("all");
 
   const [creatingUser, setCreatingUser] = useState(false);
@@ -216,7 +219,9 @@ export default function SettingsPage() {
       const items = await companyService.listCompanies({ includeInactive: companiesIncludeInactive });
       setCompanies(items);
     } catch (err) {
-      setCompaniesError(err instanceof Error ? err.message : "error_cargando_empresas");
+      const msg = err instanceof Error ? err.message : "error_cargando_empresas";
+      setCompaniesError(msg);
+      setShowCompaniesErrorModal(true);
     } finally {
       setCompaniesLoading(false);
     }
@@ -239,7 +244,9 @@ export default function SettingsPage() {
       });
       setUsers(items);
     } catch (err) {
-      setUsersError(err instanceof Error ? err.message : "error_cargando_usuarios");
+      const msg = err instanceof Error ? err.message : "error_cargando_usuarios";
+      setUsersError(msg);
+      setShowUsersErrorModal(true);
     } finally {
       setUsersLoading(false);
     }
@@ -373,6 +380,7 @@ export default function SettingsPage() {
   function openCreateCompanyDialog() {
     revokeBlobUrl(companyDraft.logoPreviewUrl);
     setCompaniesError(null);
+    setShowCompaniesErrorModal(false);
     setEditingCompanyId(null);
     setCompanyDraft(createEmptyCompanyDraft());
     setCompanyDialogMode("create");
@@ -381,6 +389,7 @@ export default function SettingsPage() {
   function openEditCompanyDialog(company: Company) {
     revokeBlobUrl(companyDraft.logoPreviewUrl);
     setCompaniesError(null);
+    setShowCompaniesErrorModal(false);
     setEditingCompanyId(company.id);
     setCompanyDraft(companyToDraft(company));
     setCompanyDialogMode("edit");
@@ -407,7 +416,9 @@ export default function SettingsPage() {
           await companyService.deactivateCompany(id);
           await loadCompanies();
         } catch (err) {
-          setCompaniesError(err instanceof Error ? err.message : "error_desactivando_empresa");
+          const msg = err instanceof Error ? err.message : "error_desactivando_empresa";
+          setCompaniesError(msg);
+          setShowCompaniesErrorModal(true);
         } finally {
           setCompanySaving(false);
         }
@@ -424,6 +435,7 @@ export default function SettingsPage() {
     setEditUserActivo(item.activo);
     setEditUserCompanyId(item.id_empresa ?? "");
     setUsersError(null);
+    setShowUsersErrorModal(false);
     setCreatingUser(false);
   }
 
@@ -433,6 +445,7 @@ export default function SettingsPage() {
     setEditUserEmail("");
     setEditUserPassword("");
     setUsersError(null);
+    setShowUsersErrorModal(false);
   }
 
   async function handleCreateUser() {
@@ -443,6 +456,7 @@ export default function SettingsPage() {
 
     if (!nombre || !email || !password) {
       setUsersError("Completá nombre, email y contraseña");
+      setShowUsersErrorModal(true);
       return;
     }
 
@@ -457,6 +471,7 @@ export default function SettingsPage() {
       const companyId = typeof newUserCompanyId === "number" ? newUserCompanyId : null;
       if (!companyId) {
         setUsersError("Seleccioná una empresa para el usuario");
+        setShowUsersErrorModal(true);
         return;
       }
       payload.id_empresa = companyId;
@@ -464,6 +479,7 @@ export default function SettingsPage() {
 
     setUserSaving(true);
     setUsersError(null);
+    setShowUsersErrorModal(false);
     try {
       await userAdminService.createUser(payload);
       setNewUserNombre("");
@@ -473,7 +489,9 @@ export default function SettingsPage() {
       setCreatingUser(false);
       await loadUsers();
     } catch (err) {
-      setUsersError(err instanceof Error ? err.message : "error_creando_usuario");
+      const msg = err instanceof Error ? err.message : "error_creando_usuario";
+      setUsersError(msg);
+      setShowUsersErrorModal(true);
     } finally {
       setUserSaving(false);
     }
@@ -486,6 +504,7 @@ export default function SettingsPage() {
     const email = toNonEmptyString(editUserEmail);
     if (!nombre || !email) {
       setUsersError("Completá nombre y email");
+      setShowUsersErrorModal(true);
       return;
     }
 
@@ -505,6 +524,7 @@ export default function SettingsPage() {
       const companyId = typeof editUserCompanyId === "number" ? editUserCompanyId : null;
       if (!companyId) {
         setUsersError("Seleccioná una empresa para el usuario");
+        setShowUsersErrorModal(true);
         return;
       }
       payload.id_empresa = companyId;
@@ -512,12 +532,15 @@ export default function SettingsPage() {
 
     setUserSaving(true);
     setUsersError(null);
+    setShowUsersErrorModal(false);
     try {
       await userAdminService.updateUser(editingUserId, payload);
       closeEditUser();
       await loadUsers();
     } catch (err) {
-      setUsersError(err instanceof Error ? err.message : "error_actualizando_usuario");
+      const msg = err instanceof Error ? err.message : "error_actualizando_usuario";
+      setUsersError(msg);
+      setShowUsersErrorModal(true);
     } finally {
       setUserSaving(false);
     }
@@ -927,7 +950,6 @@ export default function SettingsPage() {
             </div>
           ) : null}
 
-          {usersError ? <div className="error" style={{ marginTop: 12 }}>{usersError}</div> : null}
           {usersLoading ? <div className="hint" style={{ marginTop: 12 }}>Cargando...</div> : null}
 
           <div className="tableWrap" style={{ marginTop: 16 }}>
@@ -1052,7 +1074,6 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {companiesError ? <div className="error" style={{ marginTop: 12 }}>{companiesError}</div> : null}
           {companiesLoading ? <div className="hint" style={{ marginTop: 12 }}>Cargando...</div> : null}
 
           <div className="tableWrap" style={{ marginTop: 16 }}>
@@ -1199,6 +1220,17 @@ export default function SettingsPage() {
         loading={companySaving || userSaving || saving}
         onCancel={() => setConfirm(null)}
         onConfirm={() => confirm?.onConfirm()}
+      />
+
+      <ErrorModal
+        open={showUsersErrorModal}
+        message={usersError ?? ""}
+        onClose={() => { setShowUsersErrorModal(false); setUsersError(null); }}
+      />
+      <ErrorModal
+        open={showCompaniesErrorModal}
+        message={companiesError ?? ""}
+        onClose={() => { setShowCompaniesErrorModal(false); setCompaniesError(null); }}
       />
         </div>
       </div>

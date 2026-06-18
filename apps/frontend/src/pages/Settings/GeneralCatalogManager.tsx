@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../components/common/Button";
 import { ConfirmDialog } from "../../components/common/ConfirmDialog";
+import { ErrorModal } from "../../components/common/ErrorModal";
 import type { CatalogOption, CatalogOptionType } from "../../types";
 import * as configService from "../../services/config.service";
 
@@ -59,6 +60,7 @@ export function GeneralCatalogManager() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
   const [confirm, setConfirm] = useState<{
     title: string;
     message: string;
@@ -84,7 +86,9 @@ export function GeneralCatalogManager() {
       const next = await configService.listCatalogOptions({ includeInactive: true });
       setItems(next);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "error_cargando_catalogos");
+      const msg = err instanceof Error ? err.message : "error_cargando_catalogos";
+      setError(msg);
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -109,11 +113,13 @@ export function GeneralCatalogManager() {
     const value = buildValue(tipo, drafts[tipo].label, drafts[tipo].value);
     if (!label || !value) {
       setError(`Completá los campos de ${sectionMeta[tipo].title}`);
+      setShowErrorModal(true);
       return;
     }
 
     setSaving(true);
     setError(null);
+    setShowErrorModal(false);
     try {
       await configService.createCatalogOption({ tipo, label, value });
       setDrafts((prev) => ({
@@ -122,7 +128,9 @@ export function GeneralCatalogManager() {
       }));
       await loadItems();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "error_creando_catalogo");
+      const msg = err instanceof Error ? err.message : "error_creando_catalogo";
+      setError(msg);
+      setShowErrorModal(true);
     } finally {
       setSaving(false);
     }
@@ -133,11 +141,13 @@ export function GeneralCatalogManager() {
     const value = buildValue(item.tipo, editingLabel, editingValue);
     if (!label || !value) {
       setError("Completá los campos antes de guardar");
+      setShowErrorModal(true);
       return;
     }
 
     setSaving(true);
     setError(null);
+    setShowErrorModal(false);
     try {
       await configService.updateCatalogOption(item.id, { label, value });
       setEditingId(null);
@@ -145,7 +155,9 @@ export function GeneralCatalogManager() {
       setEditingValue("");
       await loadItems();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "error_actualizando_catalogo");
+      const msg = err instanceof Error ? err.message : "error_actualizando_catalogo";
+      setError(msg);
+      setShowErrorModal(true);
     } finally {
       setSaving(false);
     }
@@ -165,7 +177,9 @@ export function GeneralCatalogManager() {
           await configService.deactivateCatalogOption(id);
           await loadItems();
         } catch (err) {
-          setError(err instanceof Error ? err.message : "error_desactivando_catalogo");
+          const msg = err instanceof Error ? err.message : "error_desactivando_catalogo";
+          setError(msg);
+          setShowErrorModal(true);
         } finally {
           setSaving(false);
         }
@@ -187,7 +201,9 @@ export function GeneralCatalogManager() {
           await configService.activateCatalogOption(id);
           await loadItems();
         } catch (err) {
-          setError(err instanceof Error ? err.message : "error_activando_catalogo");
+          const msg = err instanceof Error ? err.message : "error_activando_catalogo";
+          setError(msg);
+          setShowErrorModal(true);
         } finally {
           setSaving(false);
         }
@@ -197,8 +213,13 @@ export function GeneralCatalogManager() {
 
   return (
     <>
-      {error ? <div className="error" style={{ marginTop: 12 }}>{error}</div> : null}
       {loading ? <div className="hint" style={{ marginTop: 12 }}>Cargando catálogos...</div> : null}
+
+      <ErrorModal
+        open={showErrorModal}
+        message={error ?? ""}
+        onClose={() => { setShowErrorModal(false); setError(null); }}
+      />
 
       <div className="stack" style={{ marginTop: 16 }}>
         {(Object.keys(sectionMeta) as CatalogOptionType[]).map((tipo) => {

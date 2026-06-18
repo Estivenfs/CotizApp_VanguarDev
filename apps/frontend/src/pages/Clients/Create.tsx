@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../components/common/Button";
+import { ErrorModal } from "../../components/common/ErrorModal";
 import * as clientService from "../../services/client.service";
 import * as configService from "../../services/config.service";
 import { useToast } from "../../context/ToastContext";
@@ -48,6 +49,7 @@ export function ClientCreate() {
   const [clientTypeOptions, setClientTypeOptions] = useState<string[]>(fallbackClientTypeOptions);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
   const [cuitError, setCuitError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { showToast } = useToast();
@@ -140,6 +142,7 @@ export function ClientCreate() {
     const validationError = validateDraft();
     if (validationError) {
       setError(validationError);
+      setShowErrorModal(true);
       return;
     }
     const nombre = draft.nombre_empresa.trim();
@@ -161,7 +164,9 @@ export function ClientCreate() {
 
       navigate("/clients");
     } catch (err) {
-      setError(getErrorMessage(err, clientErrorMessages, "No se pudo guardar el cliente"));
+      const msg = getErrorMessage(err, clientErrorMessages, "No se pudo guardar el cliente");
+      setError(msg);
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -327,6 +332,12 @@ export function ClientCreate() {
 
         {error ? <div className="error" style={{ marginTop: 16 }}>{error}</div> : null}
       </div>
+
+      <ErrorModal
+        open={showErrorModal}
+        message={error ?? ""}
+        onClose={() => { setShowErrorModal(false); setError(null); }}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Button } from "../../components/common/Button";
+import { ErrorModal } from "../../components/common/ErrorModal";
 import { useToast } from "../../context/ToastContext";
 import * as productService from "../../services/product.service";
 import * as configService from "../../services/config.service";
@@ -93,6 +94,7 @@ export function ProductCreate() {
   const [warrantyUnit, setWarrantyUnit] = useState<WarrantyUnit>("mes");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
   const navigate = useNavigate();
   const { showToast } = useToast();
 
@@ -192,19 +194,23 @@ export function ProductCreate() {
 
   async function onSave() {
     setError(null);
+    setShowErrorModal(false);
     const nombre = draft.nombre?.trim();
     if (!nombre) {
       setError("El nombre del producto es obligatorio");
+      setShowErrorModal(true);
       return;
     }
     const sku = draft.sku?.trim();
     if (!sku) {
       setError("El SKU del producto es obligatorio");
+      setShowErrorModal(true);
       return;
     }
     const tipoProducto = draft.tipo_producto?.trim();
     if (!tipoProducto) {
       setError("El tipo de producto es obligatorio");
+      setShowErrorModal(true);
       return;
     }
 
@@ -214,10 +220,12 @@ export function ProductCreate() {
     let usd = parseFloat(usdText.replace(",", "."));
     if (!arsText && !usdText) {
       setError("Debes ingresar al menos un precio");
+      setShowErrorModal(true);
       return;
     }
     if ((!Number.isNaN(ars) && ars < 0) || (!Number.isNaN(usd) && usd < 0)) {
       setError("Los precios no pueden ser negativos");
+      setShowErrorModal(true);
       return;
     }
     if (isNaN(ars)) ars = 0;
@@ -226,10 +234,12 @@ export function ProductCreate() {
     const garantia = buildWarranty(warrantyQuantity, warrantyUnit);
     if (warrantyUnit === "sin_garantia") {
       setError("La garantía del producto es obligatoria");
+      setShowErrorModal(true);
       return;
     }
     if (!garantia) {
       setError("La garantía debe tener una cantidad entera mayor a 0");
+      setShowErrorModal(true);
       return;
     }
 
@@ -255,7 +265,9 @@ export function ProductCreate() {
 
       navigate("/products");
     } catch (err) {
-      setError(getErrorMessage(err, productErrorMessages, "No se pudo guardar el producto"));
+      const msg = getErrorMessage(err, productErrorMessages, "No se pudo guardar el producto");
+      setError(msg);
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -399,6 +411,12 @@ export function ProductCreate() {
 
         {error ? <div className="error errorMargin">{error}</div> : null}
       </div>
+
+      <ErrorModal
+        open={showErrorModal}
+        message={error ?? ""}
+        onClose={() => { setShowErrorModal(false); setError(null); }}
+      />
     </div>
   );
 }
