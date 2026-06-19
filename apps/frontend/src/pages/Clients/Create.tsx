@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useBeforeUnload } from "react-router-dom";
+import { createPortal } from "react-dom";
 import { Button } from "../../components/common/Button";
 import { ErrorModal } from "../../components/common/ErrorModal";
 import * as clientService from "../../services/client.service";
@@ -53,6 +54,11 @@ export function ClientCreate() {
   const [cuitError, setCuitError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { showToast } = useToast();
+
+  const [initialFormSignature, setInitialFormSignature] = useState<string | null>(null);
+  const [allowNavigation, setAllowNavigation] = useState(false);
+  const [exitModalOpen, setExitModalOpen] = useState(false);
+  const [pendingPath, setPendingPath] = useState<string | null>(null);
 
   function validateDraft() {
     const nombre = draft.nombre_empresa?.trim();
@@ -137,6 +143,60 @@ export function ClientCreate() {
     });
   }, [clientTypeOptions]);
 
+  const currentFormSignature = JSON.stringify(draft);
+  const hasUnsavedChanges = initialFormSignature !== null && currentFormSignature !== initialFormSignature;
+
+  useEffect(() => {
+    if (loading) return;
+    if (isEditMode && !draft.nombre_empresa) return;
+
+    if (initialFormSignature === null) {
+      setInitialFormSignature(currentFormSignature);
+    }
+  }, [draft, loading, isEditMode, initialFormSignature, currentFormSignature]);
+
+  useBeforeUnload((event) => {
+    if (allowNavigation || loading || !hasUnsavedChanges) return;
+    event.preventDefault();
+    event.returnValue = "";
+  });
+
+  useEffect(() => {
+    function onDocumentClick(event: MouseEvent) {
+      if (allowNavigation || loading || !hasUnsavedChanges || event.defaultPrevented) return;
+      if (!(event.target instanceof Element)) return;
+
+      const anchor = event.target.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
+      if (anchor.target && anchor.target !== "_self") return;
+      if (anchor.hasAttribute("download")) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+      const targetUrl = new URL(anchor.href, window.location.href);
+      if (targetUrl.origin !== window.location.origin) return;
+
+      const nextPath = `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
+      const currentPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+      if (nextPath === currentPath) return;
+
+      event.preventDefault();
+      requestNavigation(nextPath);
+    }
+
+    document.addEventListener("click", onDocumentClick, true);
+    return () => document.removeEventListener("click", onDocumentClick, true);
+  }, [allowNavigation, hasUnsavedChanges, loading]);
+
+  function requestNavigation(path: string) {
+    if (allowNavigation || loading || !hasUnsavedChanges) {
+      navigate(path);
+      return;
+    }
+
+    setPendingPath(path);
+    setExitModalOpen(true);
+  }
+
   async function onSave() {
     setError(null);
     const validationError = validateDraft();
@@ -162,6 +222,7 @@ export function ClientCreate() {
         showToast({ type: "success", text: "Cliente creado correctamente" });
       }
 
+      setAllowNavigation(true);
       navigate("/clients");
     } catch (err) {
       const msg = getErrorMessage(err, clientErrorMessages, "No se pudo guardar el cliente");
@@ -184,7 +245,7 @@ export function ClientCreate() {
           </div>
         </div>
         <div className="actions">
-          <Button onClick={() => navigate("/clients")} className="btn--ghost" style={{ border: "none", fontWeight: 600, display: "flex", gap: 8 }}>
+          <Button onClick={() => requestNavigation("/clients")} className="btn--ghost" style={{ border: "none", fontWeight: 600, display: "flex", gap: 8 }}>
             <ReturnIcon /> Volver
           </Button>
         </div>
@@ -338,6 +399,39 @@ export function ClientCreate() {
         message={error ?? ""}
         onClose={() => { setShowErrorModal(false); setError(null); }}
       />
+
+      {exitModalOpen
+        ? createPortal(
+            <div className="modalOverlay" onClick={() => null}>
+              <div className="modalContent" onClick={(e) => e.stopPropagation()}>
+                <h3>Abandonar {isEditMode ? "edición" : "creación"}</h3>
+                <p>Tenés cambios sin guardar. ¿Seguro que deseas salir?</p>
+                <div className="modalActions" style={{ marginTop: 24 }}>
+                  <Button
+                    onClick={() => {
+                      setExitModalOpen(false);
+                      setPendingPath(null);
+                    }}
+                    className="btn--ghost"
+                  >
+                    Seguir editando
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setAllowNavigation(true);
+                      setExitModalOpen(false);
+                      navigate(pendingPath ?? "/clients");
+                    }}
+                    className="btn--danger"
+                  >
+                    Salir sin guardar
+                  </Button>
+                </div>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }
