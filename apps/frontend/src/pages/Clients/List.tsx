@@ -172,9 +172,6 @@ export function ClientsList() {
         </div>
         <div className="actions">
           <Button className="btn--ghost">
-            <span className="btnIconLead">↑</span> Importar
-          </Button>
-          <Button className="btn--ghost">
             <span className="btnIconLead">↓</span> Exportar lista
           </Button>
           <Button onClick={() => navigate("/clients/new")} className="btn--gradient">
@@ -328,7 +325,7 @@ export function ClientsList() {
         document.body
       ) : null}
 
-      {contactModalClient ? (
+      {contactModalClient ? createPortal(
         <div className="modalOverlay" onClick={() => (savingContact ? null : setContactModalClient(null))}>
           <div className="modalContent" onClick={(event) => event.stopPropagation()}>
             <h3>Registrar contacto</h3>
@@ -365,7 +362,8 @@ export function ClientsList() {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       ) : null}
     </div>
   );

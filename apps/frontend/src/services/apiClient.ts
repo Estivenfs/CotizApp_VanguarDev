@@ -39,7 +39,7 @@ export async function apiRequest<T>(input: {
   });
 
   if (!response.ok) {
-    if (response.status === 401) {
+    if (response.status === 401 && input.path !== "/login" && window.location.pathname !== "/login") {
       sessionStorage.removeItem("cotizapp_token");
       sessionStorage.removeItem("cotizapp_user");
       window.location.href = "/login";
@@ -94,7 +94,7 @@ export async function apiRequestBlob(input: {
   });
 
   if (!response.ok) {
-    if (response.status === 401) {
+    if (response.status === 401 && input.path !== "/login" && window.location.pathname !== "/login") {
       sessionStorage.removeItem("cotizapp_token");
       sessionStorage.removeItem("cotizapp_user");
       window.location.href = "/login";

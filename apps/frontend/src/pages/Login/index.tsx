@@ -197,10 +197,6 @@ export default function LoginPage() {
           error={controller.fieldErrors.password}
         />
 
-        <a href="#" className="loginLink" onClick={(e) => e.preventDefault()}>
-          Recuperar contraseña
-        </a>
-
         {controller.error ? <div className="loginError">{controller.error}</div> : null}
 
         <div className="loginButtonRow">

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "./Button";
 
 export function ConfirmDialog(props: {
@@ -28,7 +29,7 @@ export function ConfirmDialog(props: {
   const confirmClass =
     props.confirmTone === "danger" ? "btn--danger" : "btn--primary";
 
-  return (
+  return createPortal(
     <div className="modalOverlay" onClick={() => (props.loading ? null : props.onCancel())}>
       <div className="modalContent" onClick={(e) => e.stopPropagation()}>
         <h3>{props.title}</h3>
@@ -42,7 +43,8 @@ export function ConfirmDialog(props: {
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
