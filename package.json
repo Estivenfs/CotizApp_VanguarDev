@@ -9,6 +9,9 @@
     "dev:backend": "npm run dev -w @cotizapp/backend",
     "build": "npm run build --workspaces",
     "start": "npm run start -w @cotizapp/backend"
+  },
+  "supportedArchitectures": {
+    "os": ["current", "linux"],
+    "cpu": ["current", "x64"]
   }
 }
-
