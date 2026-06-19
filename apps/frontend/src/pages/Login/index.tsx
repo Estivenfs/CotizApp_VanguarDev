@@ -133,8 +133,8 @@ function PasswordField(props: {
 function useLoginController() {
   const { login } = useAuth();
   const [values, setValues] = useState<LoginValues>({
-    email: "admin@cotizapp.local",
-    password: "admin123"
+    email: "",
+    password: ""
   });
   const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
   const [error, setError] = useState<string | null>(null);
