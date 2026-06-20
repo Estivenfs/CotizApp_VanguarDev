@@ -1,10 +1,18 @@
 import dotenv from "dotenv";
+import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: path.resolve(__dirname, "../../../../.env") });
+const envPathRoot = path.resolve(process.cwd(), ".env");
+const envPathApps = path.resolve(process.cwd(), "../../.env");
+
+if (fs.existsSync(envPathRoot)) {
+  dotenv.config({ path: envPathRoot });
+} else if (fs.existsSync(envPathApps)) {
+  dotenv.config({ path: envPathApps });
+} else {
+  dotenv.config();
+}
 
 const dbPort = process.env.DB_PORT ? Number(process.env.DB_PORT) : undefined;
 
